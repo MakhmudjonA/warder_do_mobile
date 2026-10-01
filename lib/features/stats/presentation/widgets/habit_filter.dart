@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_icons.dart';
 import '../../../../core/constants/app_strings.dart';
-import '../../../../core/constants/habit_visuals.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/wd_icon.dart';
 import '../../domain/entities/stats_entities.dart';
+import '../../../../core/widgets/habit_icon_tile.dart';
 
 /// "Выбранные привычки" kartasi: statistikani bitta odatga yoki barchasiga
 /// filtrlaydi. Bosilganda tanlagich paneli ochiladi.
@@ -53,14 +53,19 @@ class HabitFilterCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              Text(
-                selected == null
-                    ? AppStrings.statsAllHabits
-                    : HabitEmoji.resolve(selected!.icon),
-                style: selected == null
-                    ? AppTextStyles.body.copyWith(fontWeight: FontWeight.w600)
-                    : const TextStyle(fontSize: 18),
-              ),
+              if (selected == null)
+                Text(
+                  AppStrings.statsAllHabits,
+                  style: AppTextStyles.body.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                )
+              else
+                HabitIconTile(
+                  iconKey: selected!.icon,
+                  color: selected!.color,
+                  size: 26,
+                ),
               const Spacer(),
               if (selected != null)
                 Flexible(
@@ -91,7 +96,8 @@ class HabitFilterCard extends StatelessWidget {
     final result = await showModalBottomSheet<_Selection>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => _HabitFilterSheet(habits: habits, selectedId: selected?.id),
+      builder: (_) =>
+          _HabitFilterSheet(habits: habits, selectedId: selected?.id),
     );
     if (result != null) onChanged(result.id);
   }
@@ -133,7 +139,8 @@ class _HabitFilterSheet extends StatelessWidget {
                 children: [
                   _tile(
                     context,
-                    icon: null,
+                    icon: 'checklist',
+                    color: '#6C7BF5',
                     title: AppStrings.statsAllHabits,
                     id: null,
                   ),
@@ -142,6 +149,7 @@ class _HabitFilterSheet extends StatelessWidget {
                     _tile(
                       context,
                       icon: habit.icon,
+                      color: habit.color,
                       title: habit.title,
                       id: habit.id,
                     ),
@@ -158,15 +166,13 @@ class _HabitFilterSheet extends StatelessWidget {
   Widget _tile(
     BuildContext context, {
     required String? icon,
+    required String? color,
     required String title,
     required String? id,
   }) {
     final isSelected = id == selectedId;
     return ListTile(
-      leading: Text(
-        icon == null ? '📋' : HabitEmoji.resolve(icon),
-        style: const TextStyle(fontSize: 20),
-      ),
+      leading: HabitIconTile(iconKey: icon, color: color, size: 32),
       title: Text(title, style: AppTextStyles.body),
       trailing: isSelected
           ? const WdIcon(AppIcons.check, size: 20, color: AppColors.primary)

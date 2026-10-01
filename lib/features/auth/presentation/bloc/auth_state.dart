@@ -18,6 +18,7 @@ class AuthState extends Equatable {
     this.failure,
     this.successMessage,
     this.noticeId = 0,
+    this.telegramLogin,
   });
 
   final AuthStatus status;
@@ -39,6 +40,9 @@ class AuthState extends Equatable {
   /// ishlamay qolardi. Bu hisoblagich har bir xabarni noyob qiladi.
   final int noticeId;
 
+  /// "Войти через Telegram" kutilmoqda (telefon ilovasida). `null` — yo'q.
+  final TelegramLoginTicket? telegramLogin;
+
   bool get isAuthenticated => status == AuthStatus.authenticated;
 
   /// Forma maydonlari ostidagi server xatolari: `{'email': '...'}`.
@@ -51,8 +55,10 @@ class AuthState extends Equatable {
     Failure? failure,
     String? successMessage,
     int? noticeId,
+    TelegramLoginTicket? telegramLogin,
     bool clearUser = false,
     bool clearNotice = false,
+    bool clearTelegramLogin = false,
   }) {
     return AuthState(
       status: status ?? this.status,
@@ -63,6 +69,9 @@ class AuthState extends Equatable {
           ? null
           : (successMessage ?? this.successMessage),
       noticeId: noticeId ?? this.noticeId,
+      telegramLogin: clearTelegramLogin
+          ? null
+          : (telegramLogin ?? this.telegramLogin),
     );
   }
 
@@ -74,5 +83,6 @@ class AuthState extends Equatable {
     failure,
     successMessage,
     noticeId,
+    telegramLogin,
   ];
 }

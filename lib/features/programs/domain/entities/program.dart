@@ -3,7 +3,7 @@ import 'package:equatable/equatable.dart';
 /// Mashq kunidagi yuklama turi.
 enum ProgramTargetType { reps, staticHold, amrap, test }
 
-/// Bitta mashq kunining maqsadи (podxod/takror/statika/test).
+/// Bitta mashq kunining maqsadi (podxod/takror/statika/test).
 class ProgramTarget extends Equatable {
   const ProgramTarget({
     required this.type,
@@ -35,7 +35,7 @@ class ProgramTarget extends Equatable {
   ];
 }
 
-/// Dasturдаги bitta kun. Dam kunида [isRest] `true`, [target] `null`.
+/// Dasturdagi bitta kun. Dam kunida [isRest] `true`, [target] `null`.
 class ProgramDay extends Equatable {
   const ProgramDay({
     required this.dayNumber,
@@ -53,7 +53,7 @@ class ProgramDay extends Equatable {
   List<Object?> get props => [dayNumber, isRest, target, note];
 }
 
-/// AI (yoki qo'lда) tayyorланган, hali **saqlанмаган** dastur ko'rinishi.
+/// AI (yoki qo'lda) tayyorlangan, hali **saqlanmagan** dastur ko'rinishi.
 class ProgramPreview extends Equatable {
   const ProgramPreview({
     required this.title,
@@ -61,6 +61,7 @@ class ProgramPreview extends Equatable {
     required this.durationDays,
     required this.days,
     this.disclaimer,
+    this.startDate,
   });
 
   final String title;
@@ -71,8 +72,19 @@ class ProgramPreview extends Equatable {
   /// AI ogohlantirishi (tibbiy maslahat emasligi haqida).
   final String? disclaimer;
 
+  /// Foydalanuvchi matnda aytgan boshlanish kuni ("с 5 октября"); aytmagan
+  /// bo'lsa `null` — unda bugundan boshlanadi.
+  final DateTime? startDate;
+
   int get trainingDays => days.where((d) => !d.isRest).length;
 
   @override
-  List<Object?> get props => [title, description, durationDays, days, disclaimer];
+  List<Object?> get props => [
+    title,
+    description,
+    durationDays,
+    days,
+    disclaimer,
+    startDate,
+  ];
 }

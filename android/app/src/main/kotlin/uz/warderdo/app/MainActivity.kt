@@ -1,4 +1,4 @@
-package com.example.warder_do_mobile
+package uz.warderdo.app
 
 import io.flutter.embedding.android.FlutterActivity
 

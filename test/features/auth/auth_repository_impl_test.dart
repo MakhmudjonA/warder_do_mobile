@@ -6,6 +6,7 @@ import 'package:warder_do_mobile/features/auth/data/datasources/auth_remote_data
 import 'package:warder_do_mobile/features/auth/data/models/auth_token_model.dart';
 import 'package:warder_do_mobile/features/auth/data/models/user_model.dart';
 import 'package:warder_do_mobile/features/auth/data/repositories/auth_repository_impl.dart';
+import 'package:warder_do_mobile/features/auth/domain/entities/telegram_login.dart';
 
 final tUser = UserModel(
   id: 'e84c4875-9aa1-4062-8b21-815fbdaccbc0',
@@ -64,6 +65,38 @@ class FakeRemote implements AuthRemoteDataSource {
         Future.value(tokenValidFor(const Duration(hours: 1)));
   }
 
+  int telegramCalls = 0;
+  String? lastInitData;
+
+  @override
+  Future<AuthTokenModel> loginWithTelegram({
+    required String initData,
+    String? timezone,
+  }) {
+    telegramCalls++;
+    lastInitData = initData;
+    return Future.value(tokenValidFor(const Duration(hours: 1)));
+  }
+
+  @override
+  Future<TelegramLoginTicket> requestTelegramLogin({String? timezone}) async =>
+      TelegramLoginTicket(
+        code: 'c',
+        displayCode: '0000',
+        botUrl: 'https://t.me/bot?start=login_c',
+        expiresAt: DateTime.now().add(const Duration(minutes: 10)),
+      );
+
+  (TelegramLoginStatus, AuthTokenModel?) pollAnswer = (
+    TelegramLoginStatus.pending,
+    null,
+  );
+
+  @override
+  Future<(TelegramLoginStatus, AuthTokenModel?)> pollTelegramLogin(
+    String code,
+  ) async => pollAnswer;
+
   @override
   Future<UserModel> getMe() {
     getMeCalls++;
@@ -71,7 +104,11 @@ class FakeRemote implements AuthRemoteDataSource {
   }
 
   @override
-  Future<UserModel> updateMe({String? fullName, String? timezone}) {
+  Future<UserModel> updateMe({
+    String? fullName,
+    String? timezone,
+    int? taskRemindBefore,
+  }) {
     return onUpdateMe?.call() ?? Future.value(tUser);
   }
 
@@ -261,21 +298,18 @@ void main() {
       },
     );
 
-    test(
-      'access eskirgan, refresh amal qiladi → /me chaqiriladi '
-      '(interceptor refresh qiladi)',
-      () async {
-        local.token = tokenValidFor(
-          const Duration(seconds: -10),
-          refreshDuration: const Duration(days: 30),
-        );
+    test('access eskirgan, refresh amal qiladi → /me chaqiriladi '
+        '(interceptor refresh qiladi)', () async {
+      local.token = tokenValidFor(
+        const Duration(seconds: -10),
+        refreshDuration: const Duration(days: 30),
+      );
 
-        final result = await repository.restoreSession();
+      final result = await repository.restoreSession();
 
-        expect(result.fold((_) => null, (user) => user), tUser);
-        expect(remote.getMeCalls, 1);
-      },
-    );
+      expect(result.fold((_) => null, (user) => user), tUser);
+      expect(remote.getMeCalls, 1);
+    });
 
     test('token amal qiladi → /me chaqiriladi va user qaytadi', () async {
       local.token = tokenValidFor(const Duration(hours: 1));
@@ -319,17 +353,38 @@ void main() {
   });
 
   group('logout', () {
-    test('serverga refresh token yuboriladi va lokal sessiya tozalanadi', () async {
-      local.token = tokenValidFor(const Duration(hours: 1));
-      local.user = tUser;
+    test(
+      'serverga refresh token yuboriladi va lokal sessiya tozalanadi',
+      () async {
+        local.token = tokenValidFor(const Duration(hours: 1));
+        local.user = tUser;
 
-      final result = await repository.logout();
+        final result = await repository.logout();
+
+        expect(result.isRight(), isTrue);
+        expect(remote.logoutCalls, 1);
+        expect(remote.lastLogoutToken, 'refresh');
+        expect(local.token, isNull);
+        expect(local.user, isNull);
+      },
+    );
+  });
+
+  group('loginWithTelegram', () {
+    test('token saqlanadi va profil olinadi', () async {
+      final remote = FakeRemote();
+      final local = FakeLocal();
+      final repository = AuthRepositoryImpl(remote: remote, local: local);
+
+      final result = await repository.loginWithTelegram(
+        initData: 'query_id=1&hash=abc',
+        timezone: 'Asia/Tashkent',
+      );
 
       expect(result.isRight(), isTrue);
-      expect(remote.logoutCalls, 1);
-      expect(remote.lastLogoutToken, 'refresh');
-      expect(local.token, isNull);
-      expect(local.user, isNull);
+      expect(remote.lastInitData, 'query_id=1&hash=abc');
+      expect(remote.getMeCalls, 1);
+      expect(await local.getToken(), isNotNull);
     });
   });
 }

@@ -23,6 +23,9 @@ abstract class HabitsRemoteDataSource {
   Future<HabitModel> getHabit(String id);
   Future<HabitModel> createHabit(Habit habit);
   Future<HabitModel> updateHabit(String id, Map<String, dynamic> changes);
+
+  /// AI: matndan saqlanmagan odat qoralamasi.
+  Future<HabitModel> parseHabit(String text);
   Future<void> deleteHabit(String id);
   Future<HabitModel> archiveHabit(String id);
   Future<HabitModel> unarchiveHabit(String id);
@@ -242,6 +245,21 @@ class HabitsRemoteDataSourceImpl implements HabitsRemoteDataSource {
       return response.data!
           .map((e) => HabitTemplateModel.fromJson(e as Map<String, dynamic>))
           .toList();
+    } on DioException catch (e) {
+      throw ErrorMapper.map(e);
+    }
+  }
+
+  @override
+  Future<HabitModel> parseHabit(String text) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        ApiConstants.habitsParse,
+        data: {'text': text},
+        // AI javobi oddiy so'rovdan uzoqroq.
+        options: Options(receiveTimeout: ApiConstants.aiReceiveTimeout),
+      );
+      return HabitModel.fromDraftJson(response.data!);
     } on DioException catch (e) {
       throw ErrorMapper.map(e);
     }

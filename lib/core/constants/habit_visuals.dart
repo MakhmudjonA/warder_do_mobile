@@ -6,10 +6,11 @@ import 'package:flutter/material.dart';
 /// Shuning uchun yangi icon qo'shish uchun serverni o'zgartirish shart emas —
 /// shu fayldagi jadvalga bitta qator qo'shiladi, xolos.
 ///
-/// **Nega emoji, icon paketi emas:** emoji — oddiy Unicode belgi, uni chizish
-/// uchun `Text` yetarli. Hech qanday paket, asset yoki font kerak emas, va
-/// tizim emojilari (iOS'da Apple, Android'da Noto) allaqachon rangli. Icon
-/// paketlari esa monoxrom bo'ladi va har bir ikonkani qo'lda bo'yash kerak.
+/// [HabitEmoji.catalog] — ikonka **kalitlari** ro'yxati va ularning emoji
+/// ko'rinishi (endi faqat zaxira sifatida). Ekranda odat ikonkasi
+/// `HabitIconTile` bilan chiziladi: odat rangidagi kvadrat + Phosphor glifi
+/// (`habit_icons.dart`). Emoji har platformada har xil ko'rinardi (Apple,
+/// Noto, Telegram Desktop'da xira Segoe) — glif hamma joyda bir xil.
 class HabitEmoji {
   const HabitEmoji._();
 
@@ -21,6 +22,8 @@ class HabitEmoji {
 
   /// Kalit — backendga yoziladigan string, qiymat — ko'rsatiladigan emoji.
   static const Map<String, String> catalog = {
+    // Faqat ilova ichidagi belgi (AI tugmasi), odatlar uchun tanlanmaydi.
+    'sparkles': '✨',
     // --- Sog'liq ---
     'health': '❤️',
     'fitness': '🤸',

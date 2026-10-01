@@ -25,10 +25,12 @@ class HabitsBloc extends Bloc<HabitsEvent, HabitsState> {
     required LogHabit logHabit,
     required UnlogHabit unlogHabit,
     required CreateHabit createHabit,
+    required UpdateHabit updateHabit,
   }) : _getDailyHabits = getDailyHabits,
        _logHabit = logHabit,
        _unlogHabit = unlogHabit,
        _createHabit = createHabit,
+       _updateHabit = updateHabit,
        super(HabitsState()) {
     on<HabitsRequested>(_onRequested);
     on<HabitsDateSelected>(_onDateSelected);
@@ -37,6 +39,7 @@ class HabitsBloc extends Bloc<HabitsEvent, HabitsState> {
     on<HabitDurationAdded>(_onDurationAdded);
     on<HabitLogCleared>(_onLogCleared);
     on<HabitCreateSubmitted>(_onCreateSubmitted);
+    on<HabitUpdateSubmitted>(_onUpdateSubmitted);
     on<HabitsNoticeCleared>(
       (event, emit) => emit(state.copyWith(clearNotice: true)),
     );
@@ -49,6 +52,7 @@ class HabitsBloc extends Bloc<HabitsEvent, HabitsState> {
   final LogHabit _logHabit;
   final UnlogHabit _unlogHabit;
   final CreateHabit _createHabit;
+  final UpdateHabit _updateHabit;
 
   Future<void> _onRequested(
     HabitsRequested event,
@@ -250,6 +254,40 @@ class HabitsBloc extends Bloc<HabitsEvent, HabitsState> {
           ),
         );
         // Yangi odat bugungi jadvalga tushishi mumkin — ro'yxatni yangilaymiz.
+        add(const HabitsRequested(silent: true));
+      },
+    );
+  }
+
+  Future<void> _onUpdateSubmitted(
+    HabitUpdateSubmitted event,
+    Emitter<HabitsState> emit,
+  ) async {
+    emit(state.copyWith(isSubmitting: true, clearNotice: true));
+
+    final result = await _updateHabit(
+      UpdateHabitParams(original: event.original, edited: event.edited),
+    );
+
+    result.fold(
+      // Yaratishdagi kabi: xabarni forma o'zi ko'rsatadi.
+      (failure) => emit(
+        state.copyWith(
+          isSubmitting: false,
+          failure: failure,
+          noticeId: state.noticeId + 1,
+        ),
+      ),
+      (habit) {
+        emit(
+          state.copyWith(
+            isSubmitting: false,
+            updatedHabit: habit,
+            noticeId: state.noticeId + 1,
+            clearFailure: true,
+          ),
+        );
+        // Jadval yoki guruh o'zgargan bo'lishi mumkin — ro'yxatni qayta olamiz.
         add(const HabitsRequested(silent: true));
       },
     );

@@ -7,7 +7,8 @@ import '../entities/program.dart';
 import '../repositories/programs_repository.dart';
 
 /// AI plan tayyorlaydi (saqlamaydi).
-class GenerateProgram implements UseCase<ProgramPreview, GenerateProgramParams> {
+class GenerateProgram
+    implements UseCase<ProgramPreview, GenerateProgramParams> {
   const GenerateProgram(this._repository);
 
   final ProgramsRepository _repository;
@@ -25,14 +26,14 @@ class GenerateProgramParams extends Equatable {
 
   final String prompt;
 
-  /// `null` — foydalanuvchi aniq bermаган, uzunlikни AI o'zi aniqlaydi.
+  /// `null` — foydalanuvchi aniq bermagan, uzunlikni AI o'zi aniqlaydi.
   final int? durationDays;
 
   @override
   List<Object?> get props => [prompt, durationDays];
 }
 
-/// Tasdiqlangan planни saqlaydi.
+/// Tasdiqlangan planni saqlaydi.
 class SaveProgram implements UseCase<Unit, SaveProgramParams> {
   const SaveProgram(this._repository);
 

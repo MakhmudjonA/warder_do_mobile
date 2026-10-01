@@ -9,6 +9,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/wd_icon.dart';
 import '../../domain/entities/stats_entities.dart';
 import 'status_circle.dart';
+import '../../../../core/widgets/habit_icon_tile.dart';
 
 /// Haftalik jadval: har bir odat qatorida 7 kun holati.
 class StatsWeekly extends StatelessWidget {
@@ -60,7 +61,11 @@ class StatsWeekly extends StatelessWidget {
           else
             for (var i = 0; i < habits.length; i++) ...[
               if (i > 0) const SizedBox(height: 10),
-              _HabitRow(habit: habits[i], circle: _circle, labelWidth: _labelWidth),
+              _HabitRow(
+                habit: habits[i],
+                circle: _circle,
+                labelWidth: _labelWidth,
+              ),
             ],
         ],
       ),
@@ -142,10 +147,7 @@ class _HabitRow extends StatelessWidget {
           width: labelWidth,
           child: Row(
             children: [
-              Text(
-                HabitEmoji.resolve(habit.icon),
-                style: const TextStyle(fontSize: 16),
-              ),
+              HabitIconTile(iconKey: habit.icon, color: habit.color, size: 20),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(

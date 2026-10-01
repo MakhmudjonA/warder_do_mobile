@@ -74,8 +74,9 @@ class _StatsView extends StatelessWidget {
                   month: state.month,
                   days: state.calendar,
                   loading: state.calendarLoading,
-                  onPrev: () =>
-                      context.read<StatsBloc>().add(const StatsMonthStepped(-1)),
+                  onPrev: () => context.read<StatsBloc>().add(
+                    const StatsMonthStepped(-1),
+                  ),
                   onNext: () =>
                       context.read<StatsBloc>().add(const StatsMonthStepped(1)),
                 ),

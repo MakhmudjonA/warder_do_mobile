@@ -206,11 +206,7 @@ class _TimezoneNote extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const WdIcon(
-          AppIcons.clock,
-          size: 16,
-          color: AppColors.textTertiary,
-        ),
+        const WdIcon(AppIcons.clock, size: 16, color: AppColors.textTertiary),
         const SizedBox(width: 8),
         Expanded(
           child: Text(

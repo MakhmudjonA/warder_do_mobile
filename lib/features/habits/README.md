@@ -19,19 +19,34 @@ uchun shu stack davom ettirildi:
 ## Icon va rang
 
 Backend `icon` va `color` ni oddiy string sifatida saqlaydi. Ma'nosini faqat
-ilova biladi — [core/constants/habit_visuals.dart](../../core/constants/habit_visuals.dart).
+ilova biladi.
 
-**Emoji ishlatiladi, icon paketi emas.** Emoji — Unicode belgi, uni chizish
-uchun `Text` yetarli: hech qanday paket, asset yoki font kerak emas, tizim
-emojilari (iOS'da Apple, Android'da Noto) allaqachon rangli. Icon paketlari
-esa monoxrom bo'lib, har bir ikonkani qo'lda bo'yash kerak bo'lardi.
+Ikonka iOS uslubida chiziladi: odat rangidagi yumaloq kvadrat, ichida
+**Phosphor** (Fill) glifi — [HabitIconTile](../../core/widgets/habit_icon_tile.dart).
+Kalit → glif jadvali: [habit_icons.dart](../../core/constants/habit_icons.dart).
+Emoji o'rniga glif, chunki emoji har platformada boshqacha chizilardi.
 
 ```dart
-Text(HabitEmoji.resolve(habit.icon))   // noma'lum kalitda '❓'
-HabitColors.parse(habit.color)         // buzuq hex'da default rang
+HabitIconTile(iconKey: habit.icon, color: habit.color, size: 40)
+HabitIconTile(iconKey: group.icon, onColor: true) // rangli fon ustida
 ```
 
-Yangi icon qo'shish: `HabitEmoji.catalog` ga bitta qator. Backend'ga tegilmaydi.
+Yangi ikonka qo'shish: `HabitIcons.glyphs` va `HabitEmoji.catalog` ga bitta
+qatordan (test ikkalasi mosligini tekshiradi). AI ham tanlashi uchun backend
+`app/services/quick_add.py: ICONS` ga ham qo'shing.
+
+Maqsad birliklari serverga **inglizcha kalit** bilan ketadi (`liter`,
+`minute`), ekranda esa ruscha qisqartma (`л`, `мин`) —
+[goal_units.dart](../../core/constants/goal_units.dart).
+
+## "Bugun" ekrani
+
+- **"+"** — bitta tugma, pastdan menyu: AI bilan / shablonlar / o'zim /
+  mashg'ulot dasturi.
+- **Задачи** — vazifalar (`type: task`) alohida, eng tepada, vaqt bo'yicha;
+  vaqti o'tgani qizil "просрочено".
+- **Swipe**: o'ngga — bajarildi (4 soniya "Отменить"), chapga — tahrirlash.
+- Telegram ichida formadagi "Сохранить" — Telegram'ning pastki MainButton'i.
 
 ## Optimistik yangilash
 
@@ -57,6 +72,42 @@ shu uchun bor: `ApiDate.format`, `ApiDate.parse`, `ApiDate.dayOnly`.
 Hafta kunlari `1 = Dushanba … 7 = Yakshanba` — Dart'dagi `DateTime.weekday`
 bilan aynan bir xil, konvertatsiya shart emas.
 
+## Tahrirlash
+
+Bitta forma ([habit_edit_page.dart](presentation/pages/habit_edit_page.dart))
+ikki rejimda ishlaydi: `extra` sifatida `HabitTemplate` kelsa — yangi odat,
+`Habit` kelsa — tahrirlash. Tahrirlashda serverga **faqat o'zgargan
+maydonlar** ketadi (`HabitModel.toChangesJson`): backend `exclude_unset`
+bilan ishlaydi, yuborilmagan kalit — "o'zgarmasin", `null` — "tozalansin"
+(`description`, `group_id`, `goal_value`). Hech narsa o'zgarmasa so'rov
+umuman yuborilmaydi.
+
+Kirish nuqtalari: "Bugun" ekranida kartani uzoq bosish → "Изменить";
+tartiblash ekranida odat menyusi → "Изменить" (saqlanmagan tartib bo'lsa
+yashiriladi, chunki qayta yuklash uni o'chirib yuborardi).
+
+## AI tezkor qo'shish va bir martalik vazifa
+
+"Выберите привычку" ekranida **"Описать словами (AI)"**: bitta gap yoziladi
+("завтра в 15:00 к врачу"), `POST /habits/parse` undan qoralama yasaydi va u
+odatdagi formada ([habit_edit_page.dart](presentation/pages/habit_edit_page.dart),
+`NewHabitDraft`) ochiladi — foydalanuvchi ko'rib, tuzatib saqlaydi. Hech narsa
+foydalanuvchi bilmasdan saqlanmaydi.
+
+Aniq kunga bog'langan vazifa — `OnceRepeat` (`{"type": "once", "date": ...}`),
+jadval panelida "Один раз": bugun / ertaga / boshqa sana.
+
+AI dastur (`program_import_sheet.dart`) ham matndagi boshlanish kunini oladi
+("с понедельника"); preview'dagi "Начало" qatorida uni o'zgartirsa bo'ladi.
+
+## Dastur odatlari
+
+Mashg'ulot dasturiga biriktirilgan odatning `repeat_rule` i
+`{"type": "program"}` — [ProgramRepeat](domain/entities/repeat_rule.dart).
+Qaysi kun mashq ekanini faqat server biladi, shuning uchun ilova bu qoidani
+ko'rsatadi ("По программе"), lekin hech qachon o'zgartirmaydi va PATCH'da
+yubormaydi.
+
 ## Ekranlar
 
 | Ekran | Fayl | So'rovlar |
@@ -64,6 +115,11 @@ bilan aynan bir xil, konvertatsiya shart emas.
 | Bugun | [today_page.dart](presentation/pages/today_page.dart) | `GET /habits?date=` — **bitta** so'rov, loglar ichida keladi |
 | Progress qo'shish | `LogValueSheet` | `POST /habits/{id}/logs` |
 | Yutuq oynasi | `AchievementDialog` | so'rovsiz — `newly_unlocked` javobdan keladi |
+| Odat tanlash | [habit_picker_page.dart](presentation/pages/habit_picker_page.dart) | so'rovsiz — katalog client'da |
+| Odat formasi | [habit_edit_page.dart](presentation/pages/habit_edit_page.dart) | `POST /habits`, `PATCH /habits/{id}` |
+| Tartiblash | [organizer_page.dart](presentation/pages/organizer_page.dart) | `GET /habits?all=true`, `POST /habits/reorder`, `PATCH/DELETE /habits/{id}`, `POST /habits/{id}/archive` |
+| AI dastur | [program_import_sheet.dart](../programs/presentation/pages/program_import_sheet.dart) | `POST /programs/generate`, `POST /programs` |
+| Statistika | [stats_page.dart](../stats/presentation/pages/stats_page.dart) | `GET /stats/calendar`, `/stats/records`, `/stats/weekly` |
 | Shablonlar | [group_templates_page.dart](../groups/presentation/pages/group_templates_page.dart) | so'rovsiz — katalog client'da |
 | Guruh formasi | [group_edit_page.dart](../groups/presentation/pages/group_edit_page.dart) | `POST/PATCH/DELETE /groups` |
 
@@ -73,8 +129,11 @@ da — client tomonda. Tanlanganda forma oldindan to'ldiriladi, xolos.
 
 ## Hali qilinmagan
 
-Odat yaratish/tahrirlash formasi, timer ekrani, statistika, yutuqlar ro'yxati,
-ta'til ekrani, drag-and-drop tartiblash, lokal bildirishnomalar
-(`flutter_local_notifications`). Ularning **data va domain qatlami tayyor** —
-`HabitsRepository`, `ProgressRepository` va `GroupsRepository` da tegishli
-metodlar bor, faqat use case + bloc + ekran qo'shiladi.
+Backendda bor, lekin ilovada ekrani yo'q: timer ekrani, yutuqlar ro'yxati,
+ta'til ekrani (`/vacations`), arxivdan qaytarish, odat tarixi
+(`GET /habits/{id}/logs`), dasturlar ro'yxati va dasturni to'xtatish
+(`GET/PATCH /programs`), lokal bildirishnomalar
+(`flutter_local_notifications`). Ularning ko'pchiligi uchun **data va domain
+qatlami tayyor** — `HabitsRepository`, `ProgressRepository` va
+`GroupsRepository` da tegishli metodlar bor, faqat use case + bloc + ekran
+qo'shiladi.

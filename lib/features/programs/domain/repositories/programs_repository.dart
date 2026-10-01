@@ -12,7 +12,7 @@ abstract class ProgramsRepository {
     int? durationDays,
   });
 
-  /// Tasdiqlangan planни yangi odat bilan birga saqlaydi.
+  /// Tasdiqlangan planni yangi odat bilan birga saqlaydi.
   Future<Either<Failure, Unit>> save({
     required ProgramPreview preview,
     required String startDate,

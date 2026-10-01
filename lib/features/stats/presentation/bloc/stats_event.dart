@@ -18,7 +18,7 @@ class StatsRefreshed extends StatsEvent {
 }
 
 /// "All Habits" tanlagichi o'zgardi. Kalendar va rekordlarga ta'sir qiladi,
-/// haftalik jadval o'zgarmaydi (unда filtr yo'q).
+/// haftalik jadval o'zgarmaydi (unda filtr yo'q).
 class StatsHabitFilterChanged extends StatsEvent {
   const StatsHabitFilterChanged(this.habitId);
 

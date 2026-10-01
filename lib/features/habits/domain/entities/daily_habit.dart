@@ -3,6 +3,7 @@ import 'package:equatable/equatable.dart';
 import '../../../programs/domain/entities/program.dart';
 import 'habit.dart';
 import 'habit_log.dart';
+import '../../../../core/constants/goal_units.dart';
 
 /// `GET /habits?date=...` javobining bitta elementi: odat + **o'sha kungi** log.
 ///
@@ -47,7 +48,7 @@ class DailyHabit extends Equatable {
     final goal = habit.goalValue;
     if (goal == null) return '';
 
-    final unit = habit.goalUnit ?? '';
+    final unit = GoalUnits.label(habit.goalUnit);
     final current = _formatNumber(currentValue);
     final target = _formatNumber(goal);
     return '$current/$target $unit'.trim();

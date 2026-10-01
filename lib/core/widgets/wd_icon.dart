@@ -4,11 +4,11 @@ import 'package:hugeicons/hugeicons.dart';
 import '../constants/app_icons.dart';
 import '../theme/app_colors.dart';
 
-/// HugeIcons ikonкасини chizadigan yagona wrapper — Flutterнинг `Icon` widgetи
-/// o'rniga ishlатилади.
+/// HugeIcons ikonkasini chizadigan yagona wrapper — Flutterning `Icon` widgeti
+/// o'rniga ishlatiladi.
 ///
-/// Rang berilмаса `IconTheme` dan oladi, shuning uchun `IconButton`,
-/// `ListTile` kabi rangни o'zi uzatadigan joyларда avvалгидек ishlайди.
+/// Rang berilmasa `IconTheme` dan oladi, shuning uchun `IconButton`,
+/// `ListTile` kabi rangni o'zi uzatadigan joylarda avvalgidek ishlaydi.
 class WdIcon extends StatelessWidget {
   const WdIcon(this.icon, {this.size = 24, this.color, super.key});
 

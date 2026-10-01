@@ -16,6 +16,7 @@ import '../../features/groups/domain/entities/group.dart';
 import '../../features/groups/presentation/pages/group_edit_page.dart';
 import '../../features/groups/presentation/pages/groups_list_page.dart';
 import '../../features/groups/presentation/pages/group_templates_page.dart';
+import '../../features/habits/domain/entities/habit.dart';
 import '../../features/habits/domain/entities/habit_template.dart';
 import '../../features/habits/presentation/pages/habit_edit_page.dart';
 import '../../features/habits/presentation/bloc/organizer_bloc.dart';
@@ -70,8 +71,13 @@ class AppRouter {
       GoRoute(
         path: AppRoutes.habitEdit,
         builder: (context, state) {
+          // `extra` orqali shablon (yangi odat) yoki mavjud odat (tahrirlash).
           final extra = state.extra;
-          return HabitEditPage(template: extra is HabitTemplate ? extra : null);
+          return HabitEditPage(
+            template: extra is HabitTemplate ? extra : null,
+            habit: extra is Habit ? extra : null,
+            draft: extra is NewHabitDraft ? extra.habit : null,
+          );
         },
       ),
       GoRoute(

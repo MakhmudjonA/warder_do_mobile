@@ -14,6 +14,20 @@ class ApiDate {
   ///
   /// `DateTime.parse` UTC yarim tunni qaytaradi va lokal vaqtga o'tkazilganda
   /// kun siljib ketishi mumkin — shuning uchun qo'lda yig'amiz.
+  /// [parse] ning xavfsiz varianti: `YYYY-MM-DD` bo'lmasa `null`.
+  static DateTime? tryParse(Object? value) {
+    if (value is! String) return null;
+    final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$').firstMatch(value.trim());
+    if (match == null) return null;
+    final date = DateTime(
+      int.parse(match[1]!),
+      int.parse(match[2]!),
+      int.parse(match[3]!),
+    );
+    // 2026-02-31 kabi sanalarni DateTime jimgina 3-martga o'tkazadi — rad etamiz.
+    return date.month == int.parse(match[2]!) ? date : null;
+  }
+
   static DateTime parse(String value) {
     final parts = value.split('-');
     return DateTime(

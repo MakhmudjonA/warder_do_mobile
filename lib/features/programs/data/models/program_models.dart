@@ -1,6 +1,7 @@
+import '../../../../core/utils/api_date.dart';
 import '../../domain/entities/program.dart';
 
-/// `target` obyektini o'qиш/yozиш.
+/// `target` obyektini o'qish/yozish.
 class ProgramTargetModel extends ProgramTarget {
   const ProgramTargetModel({
     required super.type,
@@ -99,6 +100,7 @@ class ProgramPreviewModel extends ProgramPreview {
     required super.durationDays,
     required super.days,
     super.disclaimer,
+    super.startDate,
   });
 
   factory ProgramPreviewModel.fromJson(Map<String, dynamic> json) {
@@ -111,6 +113,7 @@ class ProgramPreviewModel extends ProgramPreview {
       durationDays: (json['duration_days'] as num?)?.toInt() ?? days.length,
       days: days,
       disclaimer: json['disclaimer'] as String?,
+      startDate: ApiDate.tryParse(json['start_date']),
     );
   }
 }

@@ -17,18 +17,27 @@ class UpdateProfile implements UseCase<User, UpdateProfileParams> {
     return _repository.updateProfile(
       fullName: params.fullName,
       timezone: params.timezone,
+      taskRemindBefore: params.taskRemindBefore,
     );
   }
 }
 
 class UpdateProfileParams extends Equatable {
-  const UpdateProfileParams({this.fullName, this.timezone});
+  const UpdateProfileParams({
+    this.fullName,
+    this.timezone,
+    this.taskRemindBefore,
+  });
 
   final String? fullName;
   final String? timezone;
 
-  bool get isEmpty => fullName == null && timezone == null;
+  /// `-1` — server standartiga qaytarish.
+  final int? taskRemindBefore;
+
+  bool get isEmpty =>
+      fullName == null && timezone == null && taskRemindBefore == null;
 
   @override
-  List<Object?> get props => [fullName, timezone];
+  List<Object?> get props => [fullName, timezone, taskRemindBefore];
 }

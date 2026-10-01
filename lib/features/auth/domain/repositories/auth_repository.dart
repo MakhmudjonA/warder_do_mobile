@@ -2,6 +2,7 @@ import 'package:dartz/dartz.dart';
 
 import '../../../../core/error/failures.dart';
 import '../entities/user.dart';
+import '../entities/telegram_login.dart';
 
 /// Auth bo'yicha domain kontrakti.
 ///
@@ -27,6 +28,20 @@ abstract class AuthRepository {
     required String password,
   });
 
+  /// Telegram Mini App ichidan kirish (email/parolsiz).
+  Future<Either<Failure, User>> loginWithTelegram({
+    required String initData,
+    String? timezone,
+  });
+
+  /// Telefon ilovasi: "Войти через Telegram" — bot orqali tasdiqlash.
+  Future<Either<Failure, TelegramLoginTicket>> startTelegramLogin({
+    String? timezone,
+  });
+
+  /// Tasdiqlangan bo'lsa sessiya saqlanadi va [TelegramLoginResult.user] keladi.
+  Future<Either<Failure, TelegramLoginResult>> checkTelegramLogin(String code);
+
   /// `GET /auth/me` — serverdagi eng so'nggi holat.
   Future<Either<Failure, User>> getCurrentUser();
 
@@ -34,6 +49,7 @@ abstract class AuthRepository {
   Future<Either<Failure, User>> updateProfile({
     String? fullName,
     String? timezone,
+    int? taskRemindBefore,
   });
 
   /// Tokenni va cache'ni o'chiradi.

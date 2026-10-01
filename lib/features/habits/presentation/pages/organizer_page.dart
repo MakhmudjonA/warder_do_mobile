@@ -96,7 +96,7 @@ class _OrganizerPageState extends State<OrganizerPage> {
             focusGroupId: widget.focusGroupId,
             onReorder: (oldIndex, newIndex) =>
                 _reorder(context, state, oldIndex, newIndex),
-            onRemoveHabit: (habit) => _confirmRemoveHabit(context, habit),
+            onRemoveHabit: (habit) => _showHabitActions(context, habit),
             onRemoveGroup: (group) => _confirmRemoveGroup(context, group),
           ),
         );
@@ -232,8 +232,11 @@ class _OrganizerPageState extends State<OrganizerPage> {
     return (habits: full, groups: state.groups);
   }
 
-  Future<void> _confirmRemoveHabit(BuildContext context, Habit habit) async {
+  Future<void> _showHabitActions(BuildContext context, Habit habit) async {
     final bloc = context.read<OrganizerBloc>();
+    // Несохранённую расстановку перезагрузка после правки бы стёрла, поэтому
+    // «Изменить» доступно только когда черновика нет.
+    final canEdit = !bloc.state.isDirty;
 
     final action = await showModalBottomSheet<String>(
       context: context,
@@ -251,11 +254,17 @@ class _OrganizerPageState extends State<OrganizerPage> {
                 style: AppTextStyles.caption,
               ),
             ),
-            ListTile(
-              leading: const WdIcon(
-                AppIcons.archive,
-                color: AppColors.primary,
+            if (canEdit)
+              ListTile(
+                leading: const WdIcon(AppIcons.edit, color: AppColors.primary),
+                title: Text(
+                  AppStrings.editAction,
+                  style: AppTextStyles.body.copyWith(color: AppColors.primary),
+                ),
+                onTap: () => Navigator.of(sheetContext).pop('edit'),
               ),
+            ListTile(
+              leading: const WdIcon(AppIcons.archive, color: AppColors.primary),
               title: Text(
                 AppStrings.archive,
                 style: AppTextStyles.body.copyWith(color: AppColors.primary),
@@ -263,10 +272,7 @@ class _OrganizerPageState extends State<OrganizerPage> {
               onTap: () => Navigator.of(sheetContext).pop('archive'),
             ),
             ListTile(
-              leading: const WdIcon(
-                AppIcons.delete,
-                color: AppColors.danger,
-              ),
+              leading: const WdIcon(AppIcons.delete, color: AppColors.danger),
               title: Text(
                 AppStrings.delete,
                 style: AppTextStyles.body.copyWith(color: AppColors.danger),
@@ -279,7 +285,14 @@ class _OrganizerPageState extends State<OrganizerPage> {
       ),
     );
 
-    if (action == 'archive') {
+    if (action == 'edit') {
+      if (!context.mounted) return;
+      final updated = await context.push<Habit>(
+        AppRoutes.habitEdit,
+        extra: habit,
+      );
+      if (updated != null) bloc.add(const OrganizerRequested());
+    } else if (action == 'archive') {
       bloc.add(OrganizerHabitArchived(habit.id));
     } else if (action == 'delete') {
       bloc.add(OrganizerHabitDeleted(habit.id));

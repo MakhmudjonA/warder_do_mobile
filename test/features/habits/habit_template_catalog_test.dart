@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:warder_do_mobile/core/constants/goal_units.dart';
 import 'package:warder_do_mobile/core/constants/habit_visuals.dart';
 import 'package:warder_do_mobile/features/habits/data/habit_template_catalog.dart';
 import 'package:warder_do_mobile/features/habits/domain/entities/habit.dart';
@@ -112,5 +113,13 @@ void main() {
     test('несуществующий запрос — пустой результат', () {
       expect(HabitTemplateCatalog.search('zzzzz'), isEmpty);
     });
+  });
+
+  test('birliklar — backend biladigan inglizcha kalitlar', () {
+    for (final template in HabitTemplateCatalog.all) {
+      final unit = template.goalUnit;
+      if (unit == null) continue;
+      expect(GoalUnits.labels.containsKey(unit), isTrue, reason: template.key);
+    }
   });
 }

@@ -7,17 +7,22 @@ import '../../domain/entities/user.dart';
 class UserModel extends User {
   const UserModel({
     required super.id,
-    required super.email,
     required super.isActive,
     required super.timezone,
     required super.createdAt,
+    super.email,
+    super.telegramId,
     super.fullName,
+    super.taskRemindBeforeMinutes,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
       id: json['id'] as String,
-      email: json['email'] as String,
+      email: json['email'] as String?,
+      telegramId: (json['telegram_id'] as num?)?.toInt(),
+      taskRemindBeforeMinutes: (json['task_remind_before_minutes'] as num?)
+          ?.toInt(),
       fullName: json['full_name'] as String?,
       isActive: json['is_active'] as bool? ?? true,
       timezone: json['timezone'] as String? ?? 'UTC',
@@ -31,6 +36,8 @@ class UserModel extends User {
   Map<String, dynamic> toJson() => {
     'id': id,
     'email': email,
+    'telegram_id': telegramId,
+    'task_remind_before_minutes': taskRemindBeforeMinutes,
     'full_name': fullName,
     'is_active': isActive,
     'timezone': timezone,
@@ -40,6 +47,8 @@ class UserModel extends User {
   factory UserModel.fromEntity(User user) => UserModel(
     id: user.id,
     email: user.email,
+    telegramId: user.telegramId,
+    taskRemindBeforeMinutes: user.taskRemindBeforeMinutes,
     fullName: user.fullName,
     isActive: user.isActive,
     timezone: user.timezone,

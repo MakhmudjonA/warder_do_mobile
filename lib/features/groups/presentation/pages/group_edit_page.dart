@@ -12,6 +12,7 @@ import '../../domain/entities/group.dart';
 import '../bloc/groups_bloc.dart';
 import '../../../../core/widgets/pickers.dart';
 import '../../../../core/widgets/wd_icon.dart';
+import '../../../../core/widgets/habit_icon_tile.dart';
 
 /// "Guruh qo'shish / tahrirlash" — screenshotdagi forma.
 ///
@@ -185,9 +186,10 @@ class _GroupEditPageState extends State<GroupEditPage> {
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(
-                            HabitEmoji.resolve(_icon),
-                            style: const TextStyle(fontSize: 20),
+                          HabitIconTile(
+                            iconKey: _icon,
+                            color: _color,
+                            size: 28,
                           ),
                           const SizedBox(width: 8),
                           const WdIcon(

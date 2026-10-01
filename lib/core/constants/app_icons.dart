@@ -1,19 +1,19 @@
 import 'package:hugeicons/hugeicons.dart';
 
-/// HugeIcons ikonка ma'lумоти turi.
+/// HugeIcons ikonka ma'lumoti turi.
 ///
-/// Paket ikonкаларни `IconData` emas, SVG path'lar ro'yxati
+/// Paket ikonkalarni `IconData` emas, SVG path'lar ro'yxati
 /// (`List<List<dynamic>>`) ko'rinishida beradi. Shu typedef bilan uni ilova
-/// bo'ylab toza nom ostида olib yuramiz — xom turни hech joyда yozmaймиз.
+/// bo'ylab toza nom ostida olib yuramiz — xom turni hech joyda yozmaymiz.
 typedef AppIconData = List<List<dynamic>>;
 
-/// Ilovадаги barcha **interfeys** ikonкалари — bitta joyда.
+/// Ilovadagi barcha **interfeys** ikonkalari — bitta joyda.
 ///
-/// Bu yerдан foydalanишнинг ma'nosi: keyinчалик ikonкani almashtirish uchun
-/// faqat shu jadval o'zgаради, ekranлар tegилмайди. Ikonка chizишни [WdIcon]
-/// bajaради.
+/// Bu yerdan foydalanishning ma'nosi: keyinchalik ikonkani almashtirish uchun
+/// faqat shu jadval o'zgaradi, ekranlar tegilmaydi. Ikonka chizishni [WdIcon]
+/// bajaradi.
 ///
-/// Odat va guruh ikonкалари bu yerда **yo'q**: ular emoji (`HabitEmoji`).
+/// Odat va guruh ikonkalari bu yerda **yo'q**: ular emoji (`HabitEmoji`).
 class AppIcons {
   const AppIcons._();
 
@@ -54,6 +54,10 @@ class AppIcons {
   static const AppIconData user = HugeIcons.strokeRoundedUser;
   static const AppIconData globe = HugeIcons.strokeRoundedGlobal;
   static const AppIconData clock = HugeIcons.strokeRoundedClock01;
+  static const AppIconData bell = HugeIcons.strokeRoundedNotification01;
+  static const AppIconData folder = HugeIcons.strokeRoundedFolder01;
+  static const AppIconData chat = HugeIcons.strokeRoundedBubbleChat;
+  static const AppIconData telegram = HugeIcons.strokeRoundedTelegram;
 
   // --- Pastki panel (asosiy bo'limlar) ---
   static const AppIconData habits = HugeIcons.strokeRoundedTask01;

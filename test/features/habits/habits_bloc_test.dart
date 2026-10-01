@@ -61,6 +61,10 @@ class FakeHabitsRepository implements HabitsRepository {
   int listCalls = 0;
   int unlogCalls = 0;
 
+  /// Oxirgi `editHabit` chaqiruvi.
+  Habit? lastEdited;
+  Either<Failure, Habit>? editResult;
+
   @override
   Future<Either<Failure, List<DailyHabit>>> getDailyHabits({
     DateTime? date,
@@ -89,6 +93,16 @@ class FakeHabitsRepository implements HabitsRepository {
             newlyUnlocked: const [],
           ),
         );
+  }
+
+  @override
+  Future<Either<Failure, Habit>> parseHabit(String text) async =>
+      Right(habit(id: ''));
+
+  @override
+  Future<Either<Failure, Habit>> editHabit(Habit original, Habit edited) async {
+    lastEdited = edited;
+    return editResult ?? Right(edited);
   }
 
   @override
@@ -149,6 +163,7 @@ void main() {
       logHabit: LogHabit(repository),
       unlogHabit: UnlogHabit(repository),
       createHabit: CreateHabit(repository),
+      updateHabit: UpdateHabit(repository),
     );
   });
 
@@ -389,6 +404,49 @@ void main() {
       );
       // Yangi odat bugungi jadvalga tushishi mumkin — ro'yxat yangilanadi.
       expect(repository.listCalls, greaterThanOrEqualTo(2));
+    });
+  });
+
+  group('HabitUpdateSubmitted', () {
+    test(
+      'saqlangandan keyin updatedHabit qo‘yiladi va ro‘yxat yangilanadi',
+      () async {
+        bloc.add(const HabitsRequested());
+        await bloc.stream.firstWhere((s) => s.status == HabitsStatus.ready);
+
+        final original = habit();
+        final edited = original.copyWith(title: 'Ko‘proq suv');
+        bloc.add(HabitUpdateSubmitted(original: original, edited: edited));
+
+        await expectLater(
+          bloc.stream,
+          emitsThrough(
+            predicate<HabitsState>(
+              (s) => !s.isSubmitting && s.updatedHabit?.title == 'Ko‘proq suv',
+            ),
+          ),
+        );
+        expect(repository.lastEdited, edited);
+        expect(repository.listCalls, greaterThanOrEqualTo(2));
+      },
+    );
+
+    test('xatolikda forma uchun failure qo‘yiladi', () async {
+      repository.editResult = const Left(ValidationFailure());
+
+      bloc.add(HabitUpdateSubmitted(original: habit(), edited: habit()));
+
+      await expectLater(
+        bloc.stream,
+        emitsThrough(
+          predicate<HabitsState>(
+            (s) =>
+                !s.isSubmitting &&
+                s.failure is ValidationFailure &&
+                s.updatedHabit == null,
+          ),
+        ),
+      );
     });
   });
 }

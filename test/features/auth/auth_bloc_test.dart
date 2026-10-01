@@ -1,16 +1,21 @@
 import 'package:dartz/dartz.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:warder_do_mobile/core/constants/app_strings.dart';
 import 'package:warder_do_mobile/core/error/failures.dart';
 import 'package:warder_do_mobile/core/network/session_notifier.dart';
+import 'package:warder_do_mobile/core/telegram/telegram_platform.dart';
 import 'package:warder_do_mobile/features/auth/domain/entities/user.dart';
 import 'package:warder_do_mobile/features/auth/domain/repositories/auth_repository.dart';
 import 'package:warder_do_mobile/features/auth/domain/usecases/get_current_user.dart';
 import 'package:warder_do_mobile/features/auth/domain/usecases/login_user.dart';
+import 'package:warder_do_mobile/features/auth/domain/usecases/login_with_telegram.dart';
 import 'package:warder_do_mobile/features/auth/domain/usecases/logout_user.dart';
 import 'package:warder_do_mobile/features/auth/domain/usecases/register_user.dart';
 import 'package:warder_do_mobile/features/auth/domain/usecases/restore_session.dart';
 import 'package:warder_do_mobile/features/auth/domain/usecases/update_profile.dart';
 import 'package:warder_do_mobile/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:warder_do_mobile/features/auth/domain/entities/telegram_login.dart';
+import 'package:warder_do_mobile/features/auth/domain/usecases/telegram_app_login.dart';
 
 final tUser = User(
   id: 'id-1',
@@ -21,6 +26,31 @@ final tUser = User(
   createdAt: DateTime.utc(2026, 9, 3),
 );
 
+final tTelegramUser = User(
+  id: 'id-tg',
+  telegramId: 777,
+  fullName: 'Ali',
+  isActive: true,
+  timezone: 'Asia/Tashkent',
+  createdAt: DateTime.utc(2026, 9, 3),
+);
+
+/// Telegram ichida ochilgan Mini App'ning soxtasi.
+class FakeTelegram extends NoTelegram {
+  const FakeTelegram({this.id = 777});
+
+  final int id;
+
+  @override
+  bool get isAvailable => true;
+
+  @override
+  String get initData => 'query_id=1&hash=abc';
+
+  @override
+  int? get userId => id;
+}
+
 /// Domain kontraktining soxta implementatsiyasi — bloc uchun shu kifoya.
 class FakeAuthRepository implements AuthRepository {
   Either<Failure, User> loginResult = Right(tUser);
@@ -30,6 +60,46 @@ class FakeAuthRepository implements AuthRepository {
   Either<Failure, User?> restoreResult = Right(tUser);
 
   int logoutCalls = 0;
+
+  Either<Failure, User> telegramResult = Right(tTelegramUser);
+  int telegramCalls = 0;
+  String? lastTimezone;
+
+  @override
+  Future<Either<Failure, User>> loginWithTelegram({
+    required String initData,
+    String? timezone,
+  }) async {
+    telegramCalls++;
+    lastTimezone = timezone;
+    return telegramResult;
+  }
+
+  Either<Failure, TelegramLoginTicket> ticketResult = Right(
+    TelegramLoginTicket(
+      code: 'secret',
+      displayCode: '4821',
+      botUrl: 'https://t.me/warder_do_bot?start=login_secret',
+      expiresAt: DateTime.now().add(const Duration(minutes: 10)),
+    ),
+  );
+  final List<Either<Failure, TelegramLoginResult>> pollResults = [];
+  int pollCalls = 0;
+
+  @override
+  Future<Either<Failure, TelegramLoginTicket>> startTelegramLogin({
+    String? timezone,
+  }) async => ticketResult;
+
+  @override
+  Future<Either<Failure, TelegramLoginResult>> checkTelegramLogin(
+    String code,
+  ) async {
+    pollCalls++;
+    return pollResults.isEmpty
+        ? const Right(TelegramLoginResult(TelegramLoginStatus.pending))
+        : pollResults.removeAt(0);
+  }
 
   @override
   Future<Either<Failure, User>> login({
@@ -52,6 +122,7 @@ class FakeAuthRepository implements AuthRepository {
   Future<Either<Failure, User>> updateProfile({
     String? fullName,
     String? timezone,
+    int? taskRemindBefore,
   }) async => updateResult;
 
   @override
@@ -266,6 +337,164 @@ void main() {
         ),
       );
       expect(repository.logoutCalls, 1);
+    });
+  });
+
+  group('Telegram Mini App', () {
+    AuthBloc telegramBloc({int telegramUserId = 777}) => AuthBloc(
+      registerUser: RegisterUser(repository),
+      loginUser: LoginUser(repository),
+      logoutUser: LogoutUser(repository),
+      getCurrentUser: GetCurrentUser(repository),
+      updateProfile: UpdateProfile(repository),
+      restoreSession: RestoreSession(repository),
+      sessionNotifier: sessionNotifier,
+      loginWithTelegram: LoginWithTelegram(repository),
+      telegram: FakeTelegram(id: telegramUserId),
+      resolveTimezone: () async => 'Asia/Tashkent',
+    );
+
+    test('sessiya yo‘q → Telegram orqali avtomatik kiradi', () async {
+      repository.restoreResult = const Right(null);
+      final tg = telegramBloc()..add(const AuthStarted());
+
+      await expectLater(
+        tg.stream,
+        emitsThrough(
+          predicate<AuthState>(
+            (s) =>
+                s.status == AuthStatus.authenticated && s.user == tTelegramUser,
+          ),
+        ),
+      );
+      expect(repository.lastTimezone, 'Asia/Tashkent');
+      await tg.close();
+    });
+
+    test('shu Telegram hisobining sessiyasi bo‘lsa — qayta kirmaydi', () async {
+      repository.restoreResult = Right(tTelegramUser);
+      final tg = telegramBloc()..add(const AuthStarted());
+
+      await tg.stream.firstWhere((s) => s.status == AuthStatus.authenticated);
+      expect(repository.telegramCalls, 0);
+      await tg.close();
+    });
+
+    test('boshqa Telegram hisobining sessiyasi → almashtiriladi', () async {
+      repository.restoreResult = Right(tTelegramUser);
+      final tg = telegramBloc(telegramUserId: 999)..add(const AuthStarted());
+
+      await tg.stream.firstWhere((s) => s.status == AuthStatus.authenticated);
+      expect(repository.telegramCalls, 1);
+      await tg.close();
+    });
+
+    test('Telegram ichida email bilan kirgan sessiyaga tegilmaydi', () async {
+      repository.restoreResult = Right(tUser);
+      final tg = telegramBloc()..add(const AuthStarted());
+
+      final state = await tg.stream.firstWhere(
+        (s) => s.status == AuthStatus.authenticated,
+      );
+      expect(state.user, tUser);
+      expect(repository.telegramCalls, 0);
+      await tg.close();
+    });
+
+    test('xato bo‘lsa Welcome + xabar', () async {
+      repository.restoreResult = const Right(null);
+      repository.telegramResult = const Left(UnauthorizedFailure('bad'));
+      final tg = telegramBloc()..add(const AuthStarted());
+
+      final state = await tg.stream.firstWhere(
+        (s) => s.status == AuthStatus.unauthenticated,
+      );
+      expect(state.failure, isA<UnauthorizedFailure>());
+      await tg.close();
+    });
+
+    test('Telegram tashqarisida hech narsa o‘zgarmaydi', () async {
+      repository.restoreResult = const Right(null);
+      bloc.add(const AuthStarted());
+
+      await bloc.stream.firstWhere(
+        (s) => s.status == AuthStatus.unauthenticated,
+      );
+      expect(repository.telegramCalls, 0);
+    });
+  });
+
+  group('Telefon: Войти через Telegram', () {
+    AuthBloc phoneBloc() => AuthBloc(
+      registerUser: RegisterUser(repository),
+      loginUser: LoginUser(repository),
+      logoutUser: LogoutUser(repository),
+      getCurrentUser: GetCurrentUser(repository),
+      updateProfile: UpdateProfile(repository),
+      restoreSession: RestoreSession(repository),
+      sessionNotifier: sessionNotifier,
+      resolveTimezone: () async => 'Asia/Tashkent',
+      startTelegramLogin: StartTelegramLogin(repository),
+      checkTelegramLogin: CheckTelegramLogin(repository),
+      telegramPollInterval: const Duration(milliseconds: 1),
+    );
+
+    test('kod ko‘rsatiladi, tasdiqlangach kiradi', () async {
+      repository.pollResults.addAll([
+        const Right(TelegramLoginResult(TelegramLoginStatus.pending)),
+        Right(
+          TelegramLoginResult(TelegramLoginStatus.confirmed, tTelegramUser),
+        ),
+      ]);
+      final b = phoneBloc()..add(const AuthTelegramAppLoginStarted());
+
+      await b.stream.firstWhere((s) => s.telegramLogin?.displayCode == '4821');
+      final done = await b.stream.firstWhere(
+        (s) => s.status == AuthStatus.authenticated,
+      );
+      expect(done.user, tTelegramUser);
+      expect(done.telegramLogin, isNull);
+      expect(repository.pollCalls, 2);
+      await b.close();
+    });
+
+    test('Отмена — so‘rash to‘xtaydi', () async {
+      final b = phoneBloc()..add(const AuthTelegramAppLoginStarted());
+      await b.stream.firstWhere((s) => s.telegramLogin != null);
+
+      b.add(const AuthTelegramAppLoginCancelled());
+      await b.stream.firstWhere((s) => s.telegramLogin == null);
+      final calls = repository.pollCalls;
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+      expect(repository.pollCalls, calls, reason: 'polling stopped');
+      await b.close();
+    });
+
+    test('botda bekor qilinsa — xabar va kutish tugaydi', () async {
+      repository.pollResults.add(
+        const Right(TelegramLoginResult(TelegramLoginStatus.cancelled)),
+      );
+      final b = phoneBloc()..add(const AuthTelegramAppLoginStarted());
+
+      final ended = await b.stream.firstWhere(
+        (s) => s.failure != null && s.telegramLogin == null,
+      );
+      expect(ended.failure!.message, AppStrings.telegramLoginCancelled);
+      expect(ended.status, isNot(AuthStatus.authenticated));
+      await b.close();
+    });
+
+    test('internet uzilsa — kutishda davom etadi', () async {
+      repository.pollResults.addAll([
+        const Left(NetworkFailure()),
+        Right(
+          TelegramLoginResult(TelegramLoginStatus.confirmed, tTelegramUser),
+        ),
+      ]);
+      final b = phoneBloc()..add(const AuthTelegramAppLoginStarted());
+
+      await b.stream.firstWhere((s) => s.status == AuthStatus.authenticated);
+      await b.close();
     });
   });
 }

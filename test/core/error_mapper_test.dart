@@ -4,8 +4,12 @@ import 'package:warder_do_mobile/core/constants/app_strings.dart';
 import 'package:warder_do_mobile/core/error/exceptions.dart';
 import 'package:warder_do_mobile/core/network/error_mapper.dart';
 
-DioException _badResponse(int status, dynamic body) {
-  final options = RequestOptions(path: '/auth/login');
+DioException _badResponse(
+  int status,
+  dynamic body, {
+  String path = '/auth/login',
+}) {
+  final options = RequestOptions(path: path);
   return DioException(
     requestOptions: options,
     type: DioExceptionType.badResponse,
@@ -25,14 +29,64 @@ void main() {
       expect(result.message, AppStrings.errInvalidCredentials);
     });
 
+    test('boshqa endpointdagi 401 → sessiya tugadi, parol emas', () {
+      final result =
+          ErrorMapper.map(
+                _badResponse(401, {
+                  'detail': 'Could not validate credentials',
+                }, path: '/habits'),
+              )
+              as ServerException;
+
+      expect(result.message, AppStrings.errSessionExpired);
+    });
+
+    test('AI "bu vazifa emas" (422) → tushunarli matn', () {
+      final result =
+          ErrorMapper.map(
+                _badResponse(422, {
+                  'detail': 'This does not look like a habit or a task',
+                }, path: '/habits/parse'),
+              )
+              as ServerException;
+
+      expect(result.message, AppStrings.errNotAHabit);
+    });
+
+    test('shaxsiy bot (403 /auth/telegram) → bloklangan emas', () {
+      final result =
+          ErrorMapper.map(
+                _badResponse(403, {
+                  'detail': 'This bot is private',
+                }, path: '/auth/telegram'),
+              )
+              as ServerException;
+
+      expect(result.message, AppStrings.errPrivateBot);
+    });
+
     test('409 → email band', () {
       final result =
           ErrorMapper.map(
-                _badResponse(409, {'detail': 'Email already registered'}),
+                _badResponse(409, {
+                  'detail': 'Email already registered',
+                }, path: '/auth/register'),
               )
               as ServerException;
 
       expect(result.message, AppStrings.errEmailTaken);
+    });
+
+    test('dasturdagi 409 → email haqida emas', () {
+      final result =
+          ErrorMapper.map(
+                _badResponse(409, {
+                  'detail': 'This habit already has an active program',
+                }, path: '/programs'),
+              )
+              as ServerException;
+
+      expect(result.message, AppStrings.errProgramExists);
     });
 
     test('422 → maydonlar bo’yicha xatolar ajratiladi', () {

@@ -6,6 +6,7 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/wd_icon.dart';
 import '../../../groups/domain/entities/group.dart';
+import '../../../../core/widgets/habit_icon_tile.dart';
 
 /// Секция группы на главном экране: заголовок с эмодзи и стрелкой, внутри —
 /// карточки привычек. Свернуть можно нажатием на заголовок или на стрелку.
@@ -48,9 +49,10 @@ class HabitGroupSection extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(8, 6, 4, 6),
               child: Row(
                 children: [
-                  Text(
-                    HabitEmoji.resolve(group.icon),
-                    style: const TextStyle(fontSize: 18),
+                  HabitIconTile(
+                    iconKey: group.icon,
+                    color: group.color,
+                    size: 24,
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -113,11 +115,7 @@ class _CollapseButton extends StatelessWidget {
           child: AnimatedRotation(
             duration: const Duration(milliseconds: 180),
             turns: collapsed ? 0.5 : 0,
-            child: WdIcon(
-              AppIcons.arrowUp,
-              size: 19,
-              color: color,
-            ),
+            child: WdIcon(AppIcons.arrowUp, size: 19, color: color),
           ),
         ),
       ),

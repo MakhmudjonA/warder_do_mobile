@@ -6,10 +6,10 @@ import '../storage/token_storage.dart';
 import 'session_notifier.dart';
 
 /// Har bir so'rovga `Authorization: Bearer <access>` qo'shadi va access token
-/// tuganда uni `/auth/refresh` orqali **jimgina** yangilaydi.
+/// tuganda uni `/auth/refresh` orqali **jimgina** yangilaydi.
 ///
-/// Faqat access token muddati tuganда (backend `"Access token has expired"`
-/// deydi) refresh qilamiz. Boshqa 401/403 — sessiya haqiqatан tugagan yoki
+/// Faqat access token muddati tuganda (backend `"Access token has expired"`
+/// deydi) refresh qilamiz. Boshqa 401/403 — sessiya haqiqatan tugagan yoki
 /// hisob bloklangan degani, foydalanuvchi login ekraniga qaytariladi.
 class AuthInterceptor extends Interceptor {
   AuthInterceptor({
@@ -36,8 +36,8 @@ class AuthInterceptor extends Interceptor {
   final TokenStorage _storage;
   final SessionNotifier _sessionNotifier;
 
-  /// Ayni paytda ketayotgan refresh (bo'lsa). Bir martalik refresh tokenни
-  /// bir vaqtда ikki marta ishlatib yubormaslik uchun — barcha 401 lar shu
+  /// Ayni paytda ketayotgan refresh (bo'lsa). Bir martalik refresh tokenni
+  /// bir vaqtda ikki marta ishlatib yubormaslik uchun — barcha 401 lar shu
   /// bitta Future'ni kutadi (single-flight lock).
   Future<bool>? _refreshing;
 
@@ -48,6 +48,9 @@ class AuthInterceptor extends Interceptor {
     ApiConstants.token,
     ApiConstants.refresh,
     ApiConstants.logout,
+    ApiConstants.telegramAuth,
+    ApiConstants.telegramLoginRequest,
+    ApiConstants.telegramLoginPoll,
   };
 
   bool _isPublic(String path) => _publicPaths.any(path.endsWith);
@@ -82,7 +85,7 @@ class AuthInterceptor extends Interceptor {
     final accessExpired =
         status == 401 && detail == ApiConstants.accessExpiredDetail;
 
-    // 403 (bloklangan) yoki boshqa sababли 401 — refresh yordam bermaydi.
+    // 403 (bloklangan) yoki boshqa sababli 401 — refresh yordam bermaydi.
     if (!accessExpired) {
       await _clearTokens();
       _sessionNotifier.notifyExpired();
@@ -109,7 +112,7 @@ class AuthInterceptor extends Interceptor {
     }
   }
 
-  /// Refresh navbat bilan — birinchi chaqiruv haqiqatан yangilaydi, qolganlari
+  /// Refresh navbat bilan — birinchi chaqiruv haqiqatan yangilaydi, qolganlari
   /// o'sha natijani kutadi.
   Future<bool> _ensureRefreshed() {
     return _refreshing ??= _performRefresh().whenComplete(
@@ -135,8 +138,8 @@ class AuthInterceptor extends Interceptor {
     }
   }
 
-  /// `/auth/refresh` javobini xom ko'rinishда saqlaydi. Modelga bog'lanmaймиз —
-  /// core qatlami feature qatlamини bilmasligi kerak.
+  /// `/auth/refresh` javobini xom ko'rinishda saqlaydi. Modelga bog'lanmaymiz —
+  /// core qatlami feature qatlamini bilmasligi kerak.
   Future<void> _saveTokens(Map<String, dynamic> data) async {
     final now = DateTime.now().toUtc();
     final accessSeconds = (data['expires_in'] as num?)?.toInt() ?? 3600;

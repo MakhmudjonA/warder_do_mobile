@@ -5,16 +5,15 @@
 class ApiConstants {
   const ApiConstants._();
 
-  /// Default — USB orqali ulangan haqiqiy qurilma uchun.
+  /// Default — Heroku'dagi server, shuning uchun ilova hech qanday
+  /// sozlamasiz ishga tushadi.
   ///
-  /// `adb reverse tcp:8000 tcp:8000` telefondagi `localhost:8000` ni
-  /// kompyuterdagi backendga yo'naltiradi, shuning uchun Wi-Fi, LAN IP yoki
-  /// firewall sozlamalari umuman kerak emas.
-  ///
-  /// Boshqa muhitlar uchun build vaqtida almashtiriladi:
-  ///   * Android emulyator — `--dart-define=API_BASE_URL=http://10.0.2.2:8000/api/v1`
-  ///   * Wi-Fi orqali      — `--dart-define=API_BASE_URL=http://192.168.0.200:8000/api/v1`
-  ///   * Production        — `--dart-define=API_BASE_URL=https://api.warderdo.uz/api/v1`
+  /// Lokal backend bilan ishlash uchun build vaqtida almashtiriladi:
+  ///   * USB (haqiqiy qurilma) — avval `adb reverse tcp:8000 tcp:8000`, keyin
+  ///     `--dart-define=API_BASE_URL=http://localhost:8000/api/v1`
+  ///   * Android emulyator     — `--dart-define=API_BASE_URL=http://10.0.2.2:8000/api/v1`
+  ///   * Wi-Fi orqali          — `--dart-define=API_BASE_URL=http://192.168.0.200:8000/api/v1`
+  ///   * Production            — `--dart-define=API_BASE_URL=https://api.warderdo.uz/api/v1`
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
     defaultValue: 'https://warderdo-60a1aac98088.herokuapp.com/api/v1',
@@ -27,9 +26,12 @@ class ApiConstants {
   static const String refresh = '/auth/refresh';
   static const String logout = '/auth/logout';
   static const String me = '/auth/me';
+  static const String telegramAuth = '/auth/telegram';
+  static const String telegramLoginRequest = '/auth/telegram/login-request';
+  static const String telegramLoginPoll = '/auth/telegram/login-poll';
 
-  /// Access token muddati tuganда backend aynan shu matnni qaytaradi.
-  /// Boshqa 401 lardan farqlash uchun: bunда refresh qilamiz, chiqarmaymiz.
+  /// Access token muddati tuganda backend aynan shu matnni qaytaradi.
+  /// Boshqa 401 lardan farqlash uchun: bunda refresh qilamiz, chiqarmaymiz.
   static const String accessExpiredDetail = 'Access token has expired';
 
   // --- Habits ---
@@ -40,6 +42,7 @@ class ApiConstants {
   static String habitLogs(String id) => '/habits/$id/logs';
   static String habitStreak(String id) => '/habits/$id/streak';
   static const String habitsReorder = '/habits/reorder';
+  static const String habitsParse = '/habits/parse';
 
   // --- Groups ---
   static const String groups = '/groups';
@@ -65,7 +68,13 @@ class ApiConstants {
   static const Duration connectTimeout = Duration(seconds: 15);
   static const Duration receiveTimeout = Duration(seconds: 20);
 
+  /// `/programs/generate` uchun. Backend AI'ni 60 s × 2 urinishgacha kutadi.
+  /// Diqqat: Heroku router'i baribir 30 s da uzadi (H12) — to'liq kutish
+  /// faqat Heroku'dan tashqaridagi serverda ishlaydi.
+  static const Duration aiReceiveTimeout = Duration(seconds: 130);
+
   /// Token muddati tugashiga shuncha vaqt qolganda uni "eskirgan" deb hisoblaymiz.
-  /// Refresh token yo'q, shuning uchun bu vaqtda foydalanuvchi login ekraniga tushadi.
+  /// Eskirgan access token interceptor tomonidan `/auth/refresh` orqali
+  /// yangilanadi; refresh token ham eskirgan bo'lsa — login ekrani.
   static const Duration expiryLeeway = Duration(seconds: 30);
 }

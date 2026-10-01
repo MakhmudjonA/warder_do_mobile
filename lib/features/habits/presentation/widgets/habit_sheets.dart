@@ -12,6 +12,8 @@ import '../../../programs/presentation/pages/program_import_sheet.dart'
     show describeTarget;
 import '../../domain/entities/achievement.dart';
 import '../../domain/entities/daily_habit.dart';
+import '../../../../core/widgets/habit_icon_tile.dart';
+import '../../../../core/constants/goal_units.dart';
 
 /// Miqdorli odatga qancha qo'shishni tanlash paneli.
 ///
@@ -61,7 +63,7 @@ class _LogValueSheetState extends State<LogValueSheet> {
   @override
   Widget build(BuildContext context) {
     final color = HabitColors.parse(widget.item.habit.color);
-    final unit = widget.item.habit.goalUnit ?? '';
+    final unit = GoalUnits.label(widget.item.habit.goalUnit);
 
     return Padding(
       padding: EdgeInsets.only(
@@ -76,9 +78,10 @@ class _LogValueSheetState extends State<LogValueSheet> {
         children: [
           Row(
             children: [
-              Text(
-                HabitEmoji.resolve(widget.item.habit.icon),
-                style: const TextStyle(fontSize: 24),
+              HabitIconTile(
+                iconKey: widget.item.habit.icon,
+                color: widget.item.habit.color,
+                size: 40,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -200,9 +203,10 @@ class ProgramDaySheet extends StatelessWidget {
           children: [
             Row(
               children: [
-                Text(
-                  HabitEmoji.resolve(item.habit.icon),
-                  style: const TextStyle(fontSize: 24),
+                HabitIconTile(
+                  iconKey: item.habit.icon,
+                  color: item.habit.color,
+                  size: 40,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -293,7 +297,7 @@ class ProgramDaySheet extends StatelessWidget {
 }
 
 /// Kartani uzoq bosganda chiqadigan amallar.
-enum HabitQuickAction { clearLog }
+enum HabitQuickAction { edit, clearLog }
 
 class HabitActionsSheet extends StatelessWidget {
   const HabitActionsSheet({required this.item, super.key});
@@ -315,9 +319,10 @@ class HabitActionsSheet extends StatelessWidget {
         children: [
           const SizedBox(height: 12),
           ListTile(
-            leading: Text(
-              HabitEmoji.resolve(item.habit.icon),
-              style: const TextStyle(fontSize: 22),
+            leading: HabitIconTile(
+              iconKey: item.habit.icon,
+              color: item.habit.color,
+              size: 36,
             ),
             title: Text(
               item.habit.title,
@@ -326,6 +331,14 @@ class HabitActionsSheet extends StatelessWidget {
             subtitle: Text(item.progressLabel, style: AppTextStyles.caption),
           ),
           const Divider(),
+          ListTile(
+            leading: const WdIcon(AppIcons.edit, color: AppColors.primary),
+            title: Text(
+              AppStrings.editAction,
+              style: AppTextStyles.body.copyWith(color: AppColors.primary),
+            ),
+            onTap: () => Navigator.of(context).pop(HabitQuickAction.edit),
+          ),
           ListTile(
             enabled: item.log != null,
             leading: const WdIcon(

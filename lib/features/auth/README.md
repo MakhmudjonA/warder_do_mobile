@@ -30,22 +30,29 @@ yoki UI ni almashtirish ikkinchisiga tegmasdan mumkin.
 ```
 Dio  →  DioException
      →  ErrorMapper       (core/network) → ServerException / NetworkException
-     →  AuthRepositoryImpl               → UnauthorizedFailure, ConflictFailure,
-                                           ValidationFailure, NetworkFailure…
+     →  guardApi / mapServerException (core/error) → UnauthorizedFailure,
+                                           ConflictFailure, ValidationFailure,
+                                           NetworkFailure…
      →  AuthBloc                         → AuthState.failure
      →  AuthNoticeListener               → snackbar
         WdTextField(errorText:)          → maydon ostidagi qizil matn
 ```
 
-Backend status kodlari:
+Backend status kodlari (UI matnlari rus tilida, `AppStrings` da):
 
 | Kod | `Failure` | UI da |
 | --- | --- | --- |
-| 401 | `UnauthorizedFailure` | "Email yoki parol noto'g'ri" |
-| 403 | `ForbiddenFailure` | "Hisobingiz bloklangan" |
-| 409 | `ConflictFailure` | "Bu email allaqachon ro'yxatdan o'tgan" |
+| 401 `/auth/login`, `/auth/token` | `UnauthorizedFailure` | `errInvalidCredentials` — "email yoki parol noto'g'ri" |
+| 401 boshqa joyda | `UnauthorizedFailure` | `errSessionExpired` — "sessiya tugadi" |
+| 403 | `ForbiddenFailure` | `errAccountBlocked` — "hisob bloklangan" |
+| 404 | `NotFoundFailure` | `errNotFound` |
+| 409 `/auth/register` | `ConflictFailure` | `errEmailTaken` — "email band" |
+| 409 `/programs` | `ConflictFailure` | `errProgramExists` — "faol dastur allaqachon bor" |
 | 422 | `ValidationFailure` | maydon ostida aniq xato (`fieldErrors`) |
-| 5xx | `ServerFailure` | "Serverda xatolik" |
+| 5xx | `ServerFailure` | `errServer` |
+
+Bir xil status turli endpointda turli ma'noga ega — shuning uchun
+`ErrorMapper` so'rov yo'liga ham qaraydi.
 
 ## Sessiya hayoti
 
@@ -53,20 +60,28 @@ Backend status kodlari:
    Token yo'q yoki muddati tugagan bo'lsa — tarmoqqa umuman chiqilmaydi.
    Token bor bo'lsa `GET /auth/me` bilan tekshiriladi (foydalanuvchi
    bloklangan bo'lishi mumkin — server 403 qaytaradi).
-2. **Login / Register** → token secure storage ga yoziladi → `/me` → `User`.
-   Register `/login` ni o'zi chaqiradi, chunki backend `/register` token
-   qaytarmaydi.
-3. **Har bir so'rov** → `AuthInterceptor` `Authorization: Bearer <token>`
+   Access token eskirgan, lekin refresh token tirik bo'lsa ham `/me`
+   chaqiriladi — interceptor avval jimgina refresh qiladi.
+2. **Login / Register** → access + refresh token secure storage ga yoziladi
+   → `/me` → `User`. Register `/login` ni o'zi chaqiradi, chunki backend
+   `/register` token qaytarmaydi.
+3. **Har bir so'rov** → `AuthInterceptor` `Authorization: Bearer <access>`
    qo'shadi.
-4. **401 kelsa** → interceptor tokenni o'chiradi va `SessionNotifier` orqali
-   xabar beradi → `AuthBloc` `unauthenticated` ga o'tadi → router login
-   ekraniga olib boradi.
-5. **Logout** → lokal token o'chiriladi. Stateless JWT ni serverdan bekor
-   qilib bo'lmaydi; token muddati tugaguncha texnik jihatdan amal qiladi,
-   lekin bizda nusxasi qolmaydi.
+4. **401 `"Access token has expired"` kelsa** → interceptor `/auth/refresh`
+   ni chaqiradi (alohida "yalang'och" Dio orqali, bir vaqtda faqat bitta
+   refresh — single-flight), yangi tokenlarni saqlaydi va asl so'rovni
+   qayta yuboradi. Foydalanuvchi hech narsani sezmaydi.
+5. **Boshqa 401/403 yoki refresh muvaffaqiyatsiz** → tokenlar o'chiriladi,
+   `SessionNotifier` xabar beradi → `AuthBloc` `unauthenticated` ga o'tadi
+   → router login ekraniga olib boradi.
+6. **Logout** → `/auth/logout` ga refresh token yuboriladi (best-effort —
+   internet bo'lmasa ham lokal chiqish to'xtamaydi), keyin lokal tokenlar
+   o'chiriladi.
 
-Refresh token yo'q — backendda ham yo'q. Qo'shilganda o'zgarishi kerak
-bo'lgan joylar: `AuthTokenModel`, `AuthLocalDataSource`, `AuthInterceptor`.
+Muddatlar: access — `expires_in` (default 1 soat), refresh —
+`refresh_expires_in` (default 30 kun). Refresh token bir martalik: server
+har refreshda yangisini beradi, eskisini qayta ishlatish barcha
+sessiyalarni bekor qiladi.
 
 ## Sozlash
 
@@ -78,13 +93,14 @@ flutter run --dart-define=API_BASE_URL=http://localhost:8000/api/v1  # iOS simul
 flutter build apk --dart-define=API_BASE_URL=https://api.warderdo.uz/api/v1
 ```
 
-Default qiymat — Android emulator uchun (`10.0.2.2` = host mashinaning
-`localhost`i). Barcha manzillar: `core/constants/api_constants.dart`.
+Default qiymat — Heroku'dagi server. Emulyatorda `10.0.2.2` = host
+mashinaning `localhost`i. Barcha manzillar:
+`core/constants/api_constants.dart`.
 
 ## Yangi himoyalangan feature qo'shish
 
 Token haqida o'ylash shart emas — `AuthInterceptor` uni o'zi qo'shadi,
-401 ni o'zi ushlaydi. Kerak bo'lgani:
+refresh va 401 ni o'zi boshqaradi. Kerak bo'lgani:
 
 ```dart
 // data/datasources/habit_remote_data_source.dart
@@ -124,7 +140,7 @@ flutter test
 ```
 
 - `test/core/validators_test.dart` — parol 72-bayt qoidasi, email formati
-- `test/core/error_mapper_test.dart` — 401/409/422 javoblarini tarjima qilish
+- `test/core/error_mapper_test.dart` — 401/409/422 javoblarini endpointga qarab tarjima qilish
 - `test/features/auth/auth_repository_impl_test.dart` — sessiya oqimi, offline
 - `test/features/auth/auth_bloc_test.dart` — holat o'tishlari
 - `test/core/wd_widgets_test.dart` — tugma va input
@@ -134,6 +150,7 @@ qilmaydi.
 
 ## Backendda hali yo'q va shuning uchun UI da ham yo'q
 
-Parolni tiklash, email tasdiqlash, parol o'zgartirish, 2FA, refresh token.
+Parolni tiklash, email tasdiqlash, parol o'zgartirish, 2FA.
+`/auth/logout-all` backendda bor, lekin UI da hali tugma yo'q.
 Backend qo'shganda: yangi use case + bloc event + ekran — qolgan qatlamlar
 o'zgarmaydi.

@@ -82,6 +82,17 @@ class HabitsUnlockDismissed extends HabitsEvent {
   const HabitsUnlockDismissed();
 }
 
+/// Tahrirlash formasi saqlandi.
+class HabitUpdateSubmitted extends HabitsEvent {
+  const HabitUpdateSubmitted({required this.original, required this.edited});
+
+  final Habit original;
+  final Habit edited;
+
+  @override
+  List<Object?> get props => [original, edited];
+}
+
 /// Formadan yangi odat yuborildi.
 class HabitCreateSubmitted extends HabitsEvent {
   const HabitCreateSubmitted(this.draft);

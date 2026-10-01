@@ -12,8 +12,8 @@ part 'stats_state.dart';
 
 /// Statistika ekrani: kalendar, rekordlar va haftalik jadval.
 ///
-/// Har blok mustaqil yangilanadi — oy surilганда faqat kalendar, davr
-/// o'zgarганда faqat rekordlar so'raladi. Shuning uchun har biriga alohida
+/// Har blok mustaqil yangilanadi — oy surilganda faqat kalendar, davr
+/// o'zgarganda faqat rekordlar so'raladi. Shuning uchun har biriga alohida
 /// `...Loading` bayrog'i.
 class StatsBloc extends Bloc<StatsEvent, StatsState> {
   StatsBloc({
@@ -83,7 +83,7 @@ class StatsBloc extends Bloc<StatsEvent, StatsState> {
     final recRes = await recFut;
     final weekRes = await weekFut;
 
-    // Kalendar — asosiy blok: u yiqilса butun ekranни xato deb ko'rsatamiz.
+    // Kalendar — asosiy blok: u yiqilsa butun ekranni xato deb ko'rsatamiz.
     final failure = calRes.fold((f) => f, (_) => null);
 
     emit(

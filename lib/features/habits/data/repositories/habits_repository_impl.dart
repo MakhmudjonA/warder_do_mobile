@@ -9,6 +9,7 @@ import '../../domain/entities/habit_log.dart';
 import '../../domain/entities/habit_template.dart';
 import '../../domain/repositories/habits_repository.dart';
 import '../datasources/habits_remote_data_source.dart';
+import '../models/habit_model.dart';
 
 /// Offline rejim yo'q — har bir amal to'g'ridan-to'g'ri serverga boradi.
 /// Repository'ning yagona vazifasi: exception'ni [Failure] ga aylantirish.
@@ -45,6 +46,17 @@ class HabitsRepositoryImpl implements HabitsRepository {
     String id,
     Map<String, dynamic> changes,
   ) => guardApi(() => _remote.updateHabit(id, changes));
+
+  @override
+  Future<Either<Failure, Habit>> parseHabit(String text) =>
+      guardApi(() => _remote.parseHabit(text));
+
+  @override
+  Future<Either<Failure, Habit>> editHabit(Habit original, Habit edited) {
+    final changes = HabitModel.toChangesJson(original, edited);
+    if (changes.isEmpty) return Future.value(Right(original));
+    return updateHabit(original.id, changes);
+  }
 
   @override
   Future<Either<Failure, Unit>> deleteHabit(String id) => guardApi(() async {

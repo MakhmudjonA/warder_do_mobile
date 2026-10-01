@@ -67,11 +67,7 @@ class StatsCalendar extends StatelessWidget {
 
   _Cell _cellFor(DateTime date, Map<String, CalendarDay> byDate) {
     final data = byDate[_key(date)];
-    return _Cell(
-      date: date,
-      day: data,
-      inMonth: date.month == month.month,
-    );
+    return _Cell(date: date, day: data, inMonth: date.month == month.month);
   }
 
   Widget _header() {
@@ -119,7 +115,7 @@ class StatsCalendar extends StatelessWidget {
   static String _key(DateTime d) => ApiDate.format(d);
 }
 
-/// Bitta kun uchun kalendar katakчаси ma'lumoti.
+/// Bitta kun uchun kalendar katakchasi ma'lumoti.
 class _Cell {
   const _Cell({required this.date, required this.day, required this.inMonth});
 
@@ -146,13 +142,10 @@ class _WeekRow extends StatelessWidget {
       child: Stack(
         children: [
           // Ketma-ket `done` kunlar orasidagi bog'lovchi chiziqlar — doiralar
-          // ostида.
+          // ostida.
           Positioned.fill(
             child: CustomPaint(
-              painter: _ConnectorPainter(
-                cells: cells,
-                circle: circle,
-              ),
+              painter: _ConnectorPainter(cells: cells, circle: circle),
             ),
           ),
           Row(
@@ -176,7 +169,9 @@ class _WeekRow extends StatelessWidget {
         child: Center(
           child: Text(
             '${cell.date.day}',
-            style: AppTextStyles.caption.copyWith(color: AppColors.textTertiary),
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.textTertiary,
+            ),
           ),
         ),
       );

@@ -22,6 +22,22 @@ class AuthLoginSubmitted extends AuthEvent {
   List<Object?> get props => [email, password];
 }
 
+/// Telegram Mini App ichida "Войти через Telegram" bosildi (odatda kirish
+/// avtomatik bo'ladi — bu tugma faqat xatodan keyin qayta urinish uchun).
+class AuthTelegramRequested extends AuthEvent {
+  const AuthTelegramRequested();
+}
+
+/// Telefon ilovasida "Войти через Telegram" bosildi.
+class AuthTelegramAppLoginStarted extends AuthEvent {
+  const AuthTelegramAppLoginStarted();
+}
+
+/// Kutish oynasida "Отмена".
+class AuthTelegramAppLoginCancelled extends AuthEvent {
+  const AuthTelegramAppLoginCancelled();
+}
+
 class AuthRegisterSubmitted extends AuthEvent {
   const AuthRegisterSubmitted({
     required this.email,
@@ -40,13 +56,20 @@ class AuthRegisterSubmitted extends AuthEvent {
 }
 
 class AuthProfileUpdated extends AuthEvent {
-  const AuthProfileUpdated({this.fullName, this.timezone});
+  const AuthProfileUpdated({
+    this.fullName,
+    this.timezone,
+    this.taskRemindBefore,
+  });
 
   final String? fullName;
   final String? timezone;
 
+  /// `-1` — server standartiga qaytarish.
+  final int? taskRemindBefore;
+
   @override
-  List<Object?> get props => [fullName, timezone];
+  List<Object?> get props => [fullName, timezone, taskRemindBefore];
 }
 
 /// `/auth/me` ni qayta so'raydi (pull-to-refresh, ilova fon'dan qaytganda).

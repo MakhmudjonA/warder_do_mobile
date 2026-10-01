@@ -4,8 +4,8 @@ import '../../../../core/constants/api_constants.dart';
 
 /// Serverdan olingan access va refresh tokenlar hamda ularning muddatlari.
 ///
-/// Access token qisqa umrли (~1 soat), refresh token uzoq umrли (~30 kun).
-/// Access token tuganда `/auth/refresh` orqali jimgina yangilanadi, shuning
+/// Access token qisqa umrli (~1 soat), refresh token uzoq umrli (~30 kun).
+/// Access token tuganda `/auth/refresh` orqali jimgina yangilanadi, shuning
 /// uchun foydalanuvchi 30 kun login qilmasa ham chiqib ketmaydi.
 class AuthToken extends Equatable {
   const AuthToken({
@@ -35,10 +35,10 @@ class AuthToken extends Equatable {
       DateTime.now().toUtc().add(ApiConstants.expiryLeeway).isAfter(expiresAt);
 
   /// Refresh token ham tugagan bo'lsa — sessiyani tiklab bo'lmaydi.
-  bool get isRefreshExpired =>
-      DateTime.now().toUtc().add(ApiConstants.expiryLeeway).isAfter(
-        refreshExpiresAt,
-      );
+  bool get isRefreshExpired => DateTime.now()
+      .toUtc()
+      .add(ApiConstants.expiryLeeway)
+      .isAfter(refreshExpiresAt);
 
   String get authorizationHeader => 'Bearer $accessToken';
 

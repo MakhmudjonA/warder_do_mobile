@@ -13,7 +13,7 @@ class ProgramGenerateRequested extends ProgramImportEvent {
 
   final String prompt;
 
-  /// `null` — uzunlikни AI o'zi aniqlaydi.
+  /// `null` — uzunlikni AI o'zi aniqlaydi.
   final int? durationDays;
 
   @override

@@ -7,6 +7,8 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/api_date.dart';
+import '../../../../core/utils/date_labels.dart';
+import '../../../../core/widgets/pickers.dart';
 import '../../../../core/widgets/wd_button.dart';
 import '../../../../core/widgets/wd_icon.dart';
 import '../../domain/entities/program.dart';
@@ -14,7 +16,7 @@ import '../bloc/program_import_bloc.dart';
 
 /// AI orqali dastur import qilish oynasini ochadi.
 ///
-/// Saqlansa `true` qaytaradi — chaqiruvchi bosh ekranни yangilashi kerak.
+/// Saqlansa `true` qaytaradi — chaqiruvchi bosh ekranni yangilashi kerak.
 Future<bool?> showProgramImportSheet(BuildContext context) {
   return showModalBottomSheet<bool>(
     context: context,
@@ -44,32 +46,37 @@ class _ProgramImportViewState extends State<_ProgramImportView> {
   final _promptController = TextEditingController();
   final _habitController = TextEditingController();
 
-  /// `null` = «Авто»: uzunlikни AI matndан o'zi aniqlaydi (default).
+  /// `null` = «Авто»: uzunlikni AI matndan o'zi aniqlaydi (default).
   int? _duration;
 
-  /// Matndan aniqlangan davomiylik (bo'lsa). Foydalanuvchi qo'lда chip tanlaganда
-  /// [_durationManual] `true` bo'lади va avtomatik aniqlash to'xtайди.
+  /// Matndan aniqlangan davomiylik (bo'lsa). Foydalanuvchi qo'lda chip tanlaganda
+  /// [_durationManual] `true` bo'ladi va avtomatik aniqlash to'xtaydi.
   int? _detected;
   bool _durationManual = false;
+
+  /// Dastur boshlanadigan kun: AI matndan topgan bo'lsa o'sha, aks holda
+  /// bugun. Preview'da o'zgartirsa bo'ladi.
+  DateTime _startDate = ApiDate.dayOnly(DateTime.now());
+  ProgramImportStatus? _lastStatus;
 
   void _onPromptChanged(String text) {
     final detected = detectDuration(text);
     setState(() {
       _detected = detected;
-      // Aniqlanса — o'sha; aniqlanмаса «Авто» (null).
+      // Aniqlansa — o'sha; aniqlanmasa «Авто» (null).
       if (!_durationManual) _duration = detected;
     });
   }
 
   /// Standart variantlar + joriy qiymat (aniqlangan raqam ham chip bo'lib
-  /// ko'rinsin, garchи ro'yxatда bo'lмаса ham).
+  /// ko'rinsin, garchi ro'yxatda bo'lmasa ham).
   List<int> _durationOptions() {
     final set = {21, 30, 45, 60};
     if (_duration != null) set.add(_duration!);
     return set.toList()..sort();
   }
 
-  // Odat uchun default belgи va rang — foydalanuvchи keyin tahrirlashi mumkin.
+  // Odat uchun default belgi va rang — foydalanuvchi keyin tahrirlashi mumkin.
   static const String _habitIcon = 'workout';
   static const String _habitColor = '#F54F6C';
 
@@ -93,11 +100,22 @@ class _ProgramImportViewState extends State<_ProgramImportView> {
             if (state.status == ProgramImportStatus.saved) {
               Navigator.of(context).pop(true);
             }
-            // Preview kelганда odat nomини oldindan to'ldiramiz.
+            // Preview kelganda odat nomini oldindan to'ldiramiz.
             if (state.status == ProgramImportStatus.preview &&
                 _habitController.text.trim().isEmpty) {
               _habitController.text = state.preview?.title ?? '';
             }
+            // Faqat yangi preview kelganda (saqlash xatosidan qaytganda emas)
+            // sanani AI topgan kunga qo'yamiz — aks holda foydalanuvchi
+            // tanlagani o'chib ketardi.
+            if (state.status == ProgramImportStatus.preview &&
+                _lastStatus == ProgramImportStatus.generating) {
+              setState(
+                () => _startDate =
+                    state.preview?.startDate ?? ApiDate.dayOnly(DateTime.now()),
+              );
+            }
+            _lastStatus = state.status;
           },
           builder: (context, state) {
             return Column(
@@ -106,7 +124,10 @@ class _ProgramImportViewState extends State<_ProgramImportView> {
                 Expanded(
                   child: switch (state.status) {
                     ProgramImportStatus.input ||
-                    ProgramImportStatus.generating => _buildInput(context, state),
+                    ProgramImportStatus.generating => _buildInput(
+                      context,
+                      state,
+                    ),
                     _ => _buildPreview(context, state),
                   },
                 ),
@@ -122,7 +143,8 @@ class _ProgramImportViewState extends State<_ProgramImportView> {
 
   Widget _buildInput(BuildContext context, ProgramImportState state) {
     final generating = state.status == ProgramImportStatus.generating;
-    final canGenerate = _promptController.text.trim().length >= 5 && !generating;
+    final canGenerate =
+        _promptController.text.trim().length >= 5 && !generating;
 
     return Column(
       children: [
@@ -132,7 +154,11 @@ class _ProgramImportViewState extends State<_ProgramImportView> {
             children: [
               Row(
                 children: [
-                  const WdIcon(AppIcons.import, size: 22, color: AppColors.primary),
+                  const WdIcon(
+                    AppIcons.import,
+                    size: 22,
+                    color: AppColors.primary,
+                  ),
                   const SizedBox(width: 10),
                   Text('Создать программу с AI', style: AppTextStyles.title),
                 ],
@@ -171,7 +197,10 @@ class _ProgramImportViewState extends State<_ProgramImportView> {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Text('Длительность (дней)', style: AppTextStyles.sectionLabel),
+                  Text(
+                    'Длительность (дней)',
+                    style: AppTextStyles.sectionLabel,
+                  ),
                   const SizedBox(width: 8),
                   Flexible(
                     child: Text(
@@ -257,6 +286,20 @@ class _ProgramImportViewState extends State<_ProgramImportView> {
                 controller: _habitController,
               ),
               const SizedBox(height: 18),
+              Text('Начало', style: AppTextStyles.sectionLabel),
+              const SizedBox(height: 8),
+              _StartDateTile(
+                date: _startDate,
+                onTap: saving
+                    ? null
+                    : () async {
+                        final picked = await pickDate(context, _startDate);
+                        if (picked != null) {
+                          setState(() => _startDate = picked);
+                        }
+                      },
+              ),
+              const SizedBox(height: 18),
               Text('Дни', style: AppTextStyles.sectionLabel),
               const SizedBox(height: 8),
               for (final day in preview.days) _DayTile(day: day),
@@ -301,7 +344,7 @@ class _ProgramImportViewState extends State<_ProgramImportView> {
                             habitTitle: _habitController.text.trim(),
                             habitIcon: _habitIcon,
                             habitColor: _habitColor,
-                            startDate: ApiDate.format(DateTime.now()),
+                            startDate: ApiDate.format(_startDate),
                           ),
                         ),
                 ),
@@ -314,10 +357,10 @@ class _ProgramImportViewState extends State<_ProgramImportView> {
   }
 }
 
-/// Foydalanuvchi matnidan davomiylikни (kun) topadi.
+/// Foydalanuvchi matnidan davomiylikni (kun) topadi.
 ///
 /// "30 kun", "за 30 дней", "30 days" → 30.  "4 hafta", "4 недели" → 28.
-/// Topilмаса `null`. Natija 3..120 oralig'iga qisiladi.
+/// Topilmasa `null`. Natija 3..120 oralig'iga qisiladi.
 int? detectDuration(String text) {
   final t = text.toLowerCase();
 
@@ -336,7 +379,7 @@ int? detectDuration(String text) {
   return null;
 }
 
-/// Mashq kunini o'qиладиган matn qilib beradi.
+/// Mashq kunini o'qiladigan matn qilib beradi.
 String describeTarget(ProgramDay day) {
   if (day.isRest) return 'Отдых';
   final t = day.target;
@@ -349,8 +392,8 @@ String describeTarget(ProgramDay day) {
       final rest = t.restSeconds != null ? ' · отдых ${t.restSeconds}с' : '';
       return '${t.sets}×$reps$rest';
     case ProgramTargetType.staticHold:
-      final hold = (t.holdSecondsMax != null &&
-              t.holdSecondsMax != t.holdSecondsMin)
+      final hold =
+          (t.holdSecondsMax != null && t.holdSecondsMax != t.holdSecondsMin)
           ? '${t.holdSecondsMin}–${t.holdSecondsMax}с'
           : '${t.holdSecondsMin}с';
       return 'Статика ${t.sets}×$hold';
@@ -406,7 +449,9 @@ class _DayTile extends StatelessWidget {
                   describeTarget(day),
                   style: AppTextStyles.body.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: rest ? AppColors.textTertiary : AppColors.textPrimary,
+                    color: rest
+                        ? AppColors.textTertiary
+                        : AppColors.textPrimary,
                   ),
                 ),
                 if (day.note != null && day.note!.isNotEmpty) ...[
@@ -440,7 +485,11 @@ class _DurationChips extends StatelessWidget {
       spacing: 8,
       runSpacing: 8,
       children: [
-        _chip(label: 'Авто', selected: value == null, onTap: () => onChanged(null)),
+        _chip(
+          label: 'Авто',
+          selected: value == null,
+          onTap: () => onChanged(null),
+        ),
         for (final option in options)
           _chip(
             label: '$option',
@@ -511,6 +560,41 @@ class _LabeledField extends StatelessWidget {
   }
 }
 
+/// "Начало: 5 октября" — bosilsa sana tanlanadi.
+class _StartDateTile extends StatelessWidget {
+  const _StartDateTile({required this.date, required this.onTap});
+
+  final DateTime date;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surfaceInput,
+      borderRadius: BorderRadius.circular(AppTheme.radius),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppTheme.radius),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              const Text('📅', style: TextStyle(fontSize: 18)),
+              const SizedBox(width: 12),
+              Expanded(child: Text(dayLabel(date), style: AppTextStyles.body)),
+              const WdIcon(
+                AppIcons.chevronRight,
+                size: 20,
+                color: AppColors.textTertiary,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _Badge extends StatelessWidget {
   const _Badge(this.text);
 
@@ -547,9 +631,7 @@ class _Disclaimer extends StatelessWidget {
         children: [
           const WdIcon(AppIcons.alert, size: 18, color: AppColors.textTertiary),
           const SizedBox(width: 10),
-          Expanded(
-            child: Text(text, style: AppTextStyles.caption),
-          ),
+          Expanded(child: Text(text, style: AppTextStyles.caption)),
         ],
       ),
     );

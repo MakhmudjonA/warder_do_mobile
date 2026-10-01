@@ -89,6 +89,7 @@ class Habit extends Equatable {
     this.goalUnit,
     this.goalType,
     this.reminders = const [],
+    this.remindBeforeMinutes,
   });
 
   final String id;
@@ -116,12 +117,26 @@ class Habit extends Equatable {
   final GoalType? goalType;
   final RepeatRule repeatRule;
   final List<Reminder> reminders;
+
+  /// Eslatmadan shuncha daqiqa oldin qo'shimcha ogohlantirish (Telegram).
+  /// `null` — standart: vazifalar uchun 10 daqiqa, odatlar uchun yo'q;
+  /// `0` — umuman yo'q.
+  final int? remindBeforeMinutes;
   final int order;
 
   /// Arxivlangan odat kunlik ro'yxatda ko'rinmaydi, lekin tarixi saqlanadi.
   final bool isArchived;
 
   final DateTime createdAt;
+
+  /// Bir martalik ish ("к врачу"), odat emas.
+  bool get isTask => type == HabitType.task;
+
+  /// Eng erta eslatma — vazifaning "vaqti".
+  Reminder? get firstReminder {
+    if (reminders.isEmpty) return null;
+    return ([...reminders]..sort((a, b) => a.json.compareTo(b.json))).first;
+  }
 
   /// Miqdorli odatmi (progress ring kerakmi) yoki oddiy checkboxmi.
   bool get hasGoal => goalValue != null && goalValue! > 0;
@@ -151,6 +166,7 @@ class Habit extends Equatable {
     GoalType? goalType,
     RepeatRule? repeatRule,
     List<Reminder>? reminders,
+    int? remindBeforeMinutes,
     int? order,
     bool? isArchived,
     DateTime? createdAt,
@@ -172,6 +188,7 @@ class Habit extends Equatable {
       goalType: clearGoal ? null : (goalType ?? this.goalType),
       repeatRule: repeatRule ?? this.repeatRule,
       reminders: reminders ?? this.reminders,
+      remindBeforeMinutes: remindBeforeMinutes ?? this.remindBeforeMinutes,
       order: order ?? this.order,
       isArchived: isArchived ?? this.isArchived,
       createdAt: createdAt ?? this.createdAt,
@@ -192,6 +209,7 @@ class Habit extends Equatable {
     goalType,
     repeatRule,
     reminders,
+    remindBeforeMinutes,
     order,
     isArchived,
     createdAt,

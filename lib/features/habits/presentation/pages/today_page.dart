@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_icons.dart';
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/di/injection_container.dart';
 import '../../../../core/router/app_routes.dart';
+import '../../../../core/telegram/telegram_platform.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -17,7 +19,10 @@ import '../../domain/entities/daily_habit.dart';
 import '../bloc/habits_bloc.dart';
 import '../widgets/habit_card.dart';
 import '../widgets/habit_group_section.dart';
+import '../widgets/add_menu_sheet.dart';
 import '../widgets/habit_sheets.dart';
+import '../widgets/quick_add_sheet.dart';
+import 'habit_edit_page.dart';
 import '../widgets/week_strip.dart';
 
 /// Bosh ekran: hafta qatori + tanlangan kunning odatlari.
@@ -68,11 +73,7 @@ class TodayPage extends StatelessWidget {
           SnackBar(
             content: Row(
               children: [
-                const WdIcon(
-                  AppIcons.alert,
-                  size: 20,
-                  color: AppColors.danger,
-                ),
+                const WdIcon(AppIcons.alert, size: 20, color: AppColors.danger),
                 const SizedBox(width: 12),
                 Expanded(child: Text(notice)),
               ],
@@ -150,38 +151,35 @@ class _TopBar extends StatelessWidget {
           ),
           SizedBox(
             width: _sideWidth,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                _CircleIcon(
-                  icon: AppIcons.add,
-                  onTap: () async {
-                    await context.push(AppRoutes.habitPicker);
-                    if (!context.mounted) return;
-                    context.read<HabitsBloc>().add(
-                      const HabitsRequested(silent: true),
-                    );
-                  },
-                ),
-                // AI orqali dastur (program) import qilish.
-                const SizedBox(width: 10),
-                _CircleIcon(
-                  icon: AppIcons.import,
-                  onTap: () async {
-                    final created = await showProgramImportSheet(context);
-                    if (created == true && context.mounted) {
-                      context.read<HabitsBloc>().add(
-                        const HabitsRequested(silent: true),
-                      );
-                    }
-                  },
-                ),
-              ],
+            child: Align(
+              alignment: Alignment.centerRight,
+              // Qo'shishning barcha yo'llari — bitta "+" ortida.
+              child: _AddButton(onTap: () => _openAddMenu(context)),
             ),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _openAddMenu(BuildContext context) async {
+    final action = await AddMenuSheet.show(context);
+    if (action == null || !context.mounted) return;
+
+    switch (action) {
+      case AddAction.ai:
+        final draft = await QuickAddSheet.show(context);
+        if (draft == null || !context.mounted) return;
+        await context.push(AppRoutes.habitEdit, extra: NewHabitDraft(draft));
+      case AddAction.templates:
+        await context.push(AppRoutes.habitPicker);
+      case AddAction.custom:
+        await context.push(AppRoutes.habitEdit);
+      case AddAction.program:
+        await showProgramImportSheet(context);
+    }
+    if (!context.mounted) return;
+    context.read<HabitsBloc>().add(const HabitsRequested(silent: true));
   }
 
   static String _formatDate(DateTime date) =>
@@ -220,7 +218,9 @@ class _DayProgress extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  allDone ? AppStrings.progressAllDone : AppStrings.progressToday,
+                  allDone
+                      ? AppStrings.progressAllDone
+                      : AppStrings.progressToday,
                   style: AppTextStyles.body.copyWith(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
@@ -324,30 +324,24 @@ class _PillIcon extends StatelessWidget {
   }
 }
 
-class _CircleIcon extends StatelessWidget {
-  const _CircleIcon({required this.icon, required this.onTap});
+/// Asosiy "+" — rangli, ekrandagi eng ko'zga tashlanadigan tugma.
+class _AddButton extends StatelessWidget {
+  const _AddButton({required this.onTap});
 
-  final AppIconData icon;
-  final VoidCallback? onTap;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.surface,
+      color: AppColors.primary,
       shape: const CircleBorder(),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        child: SizedBox(
-          height: 40,
-          width: 40,
-          child: WdIcon(
-            icon,
-            size: 20,
-            color: onTap == null
-                ? AppColors.textTertiary
-                : AppColors.textPrimary,
-          ),
+        child: const SizedBox(
+          height: 44,
+          width: 44,
+          child: WdIcon(AppIcons.add, size: 22, color: AppColors.textOnPrimary),
         ),
       ),
     );
@@ -410,8 +404,29 @@ class _BodyState extends State<_Body> {
   ) {
     final widgets = <Widget>[];
 
+    // Vazifalar (bir martalik ishlar) — alohida, eng tepada, vaqt bo'yicha.
+    final tasks = state.habits.where((i) => i.habit.isTask).toList()
+      ..sort((a, b) => _taskOrder(a).compareTo(_taskOrder(b)));
+    final habits = state.habits.where((i) => !i.habit.isTask).toList();
+
+    if (tasks.isNotEmpty) {
+      widgets
+        ..add(
+          _TasksHeader(
+            done: tasks.where((t) => t.isCompleted).length,
+            total: tasks.length,
+          ),
+        )
+        ..add(const SizedBox(height: 8));
+      for (var i = 0; i < tasks.length; i++) {
+        if (i > 0) widgets.add(const SizedBox(height: 10));
+        widgets.add(_card(context, state, tasks[i]));
+      }
+      widgets.add(const SizedBox(height: 18));
+    }
+
     for (final group in groups) {
-      final items = state.habits
+      final items = habits
           .where((item) => item.habit.groupId == group.id)
           .toList();
       // Пустую группу на сегодня не показываем — она только шумит.
@@ -434,7 +449,7 @@ class _BodyState extends State<_Body> {
     }
 
     // Привычки без группы идут просто списком, без заголовка.
-    final ungrouped = state.habits
+    final ungrouped = habits
         .where((item) => item.habit.groupId == null)
         .toList();
 
@@ -446,17 +461,76 @@ class _BodyState extends State<_Body> {
     return widgets;
   }
 
+  /// Vaqti bor vazifalar vaqt bo'yicha, vaqtsizlari oxirida.
+  static String _taskOrder(DailyHabit item) =>
+      item.habit.firstReminder?.json ?? '99:99';
+
   Widget _card(BuildContext context, HabitsState state, DailyHabit item) {
-    return HabitCard(
-      key: ValueKey(item.habit.id),
+    // Faqat bugungi kunni belgilash mumkin — o'tgan va kelajak kunlar
+    // "ko'rish uchun", lekin bosilmaydi (backend ham ularni rad etadi).
+    final enabled = ApiDate.isToday(state.selectedDate);
+
+    final card = HabitCard(
       item: item,
       isPending: state.isPending(item.habit.id),
-      // Faqat bugungi kunni belgilash mumkin — o'tgan va kelajak kunlar
-      // "ko'rish uchun", lekin bosilmaydi (backend ham ularni rad etadi).
-      enabled: ApiDate.isToday(state.selectedDate),
+      enabled: enabled,
       onPrimaryAction: () => _onPrimaryAction(context, item),
       onLongPress: () => _onLongPress(context, item),
     );
+
+    // Swipe: o'ngga — bajarildi, chapga — tahrirlash. Karta joyida qoladi
+    // (confirmDismiss har doim false), faqat amal bajariladi.
+    return Dismissible(
+      key: ValueKey('swipe-${item.habit.id}'),
+      direction: enabled
+          ? DismissDirection.horizontal
+          : DismissDirection.endToStart,
+      dismissThresholds: const {
+        DismissDirection.startToEnd: 0.3,
+        DismissDirection.endToStart: 0.3,
+      },
+      background: _SwipeBackground(
+        color: AppColors.success,
+        icon: item.isCompleted ? AppIcons.removeCircle : AppIcons.check,
+        alignment: Alignment.centerLeft,
+      ),
+      secondaryBackground: const _SwipeBackground(
+        color: AppColors.primary,
+        icon: AppIcons.edit,
+        alignment: Alignment.centerRight,
+      ),
+      confirmDismiss: (direction) async {
+        if (direction == DismissDirection.startToEnd) {
+          _toggleWithUndo(context, item);
+        } else {
+          await context.push(AppRoutes.habitEdit, extra: item.habit);
+        }
+        return false;
+      },
+      child: card,
+    );
+  }
+
+  /// Belgilash/olib tashlash; belgilanganda 4 soniya "Отменить".
+  void _toggleWithUndo(BuildContext context, DailyHabit item) {
+    final bloc = context.read<HabitsBloc>();
+    sl<TelegramPlatform>().hapticLight();
+    bloc.add(HabitToggled(item.habit.id));
+    if (item.isCompleted) return;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 4),
+          content: Text('${AppStrings.markedDone}: ${item.habit.title}'),
+          action: SnackBarAction(
+            label: AppStrings.undo,
+            textColor: AppColors.primary,
+            onPressed: () => bloc.add(HabitLogCleared(item.habit.id)),
+          ),
+        ),
+      );
   }
 
   Future<void> _onPrimaryAction(BuildContext context, DailyHabit item) async {
@@ -472,7 +546,7 @@ class _BodyState extends State<_Body> {
 
     // Привычка без цели или уже выполненная — обычное переключение.
     if (!item.habit.hasGoal || item.isCompleted) {
-      bloc.add(HabitToggled(item.habit.id));
+      _toggleWithUndo(context, item);
       return;
     }
 
@@ -485,10 +559,67 @@ class _BodyState extends State<_Body> {
   Future<void> _onLongPress(BuildContext context, DailyHabit item) async {
     final bloc = context.read<HabitsBloc>();
     final action = await HabitActionsSheet.show(context, item);
+    if (!context.mounted) return;
 
-    if (action == HabitQuickAction.clearLog) {
-      bloc.add(HabitLogCleared(item.habit.id));
+    switch (action) {
+      case HabitQuickAction.edit:
+        // Ro'yxatni forma o'zi saqlagandan keyin yangilaydi.
+        await context.push(AppRoutes.habitEdit, extra: item.habit);
+      case HabitQuickAction.clearLog:
+        bloc.add(HabitLogCleared(item.habit.id));
+      case null:
+        break;
     }
+  }
+}
+
+/// "Задачи · 1/3" sarlavhasi.
+class _TasksHeader extends StatelessWidget {
+  const _TasksHeader({required this.done, required this.total});
+
+  final int done;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
+      child: Row(
+        children: [
+          const Text(
+            AppStrings.tasksSection,
+            style: AppTextStyles.sectionLabel,
+          ),
+          const Spacer(),
+          Text('$done/$total', style: AppTextStyles.caption),
+        ],
+      ),
+    );
+  }
+}
+
+class _SwipeBackground extends StatelessWidget {
+  const _SwipeBackground({
+    required this.color,
+    required this.icon,
+    required this.alignment,
+  });
+
+  final Color color;
+  final AppIconData icon;
+  final Alignment alignment;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      alignment: alignment,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(AppTheme.radius),
+      ),
+      child: WdIcon(icon, size: 24, color: AppColors.textOnPrimary),
+    );
   }
 }
 

@@ -7,8 +7,7 @@ import '../entities/stats_entities.dart';
 import '../repositories/stats_repository.dart';
 
 /// Kalendar gridini oladi (odatda 6 haftalik oraliq).
-class GetStatsCalendar
-    implements UseCase<List<CalendarDay>, StatsRangeParams> {
+class GetStatsCalendar implements UseCase<List<CalendarDay>, StatsRangeParams> {
   const GetStatsCalendar(this._repository);
 
   final StatsRepository _repository;

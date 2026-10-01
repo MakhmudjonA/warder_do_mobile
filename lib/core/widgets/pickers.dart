@@ -6,22 +6,31 @@ import '../constants/habit_visuals.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 import '../theme/app_theme.dart';
+import '../utils/api_date.dart';
 import 'wd_icon.dart';
+import 'habit_icon_tile.dart';
 
 /// Emoji tanlash paneli — kategoriyalar bo'yicha guruhlangan katak.
 ///
 /// Natija — [HabitEmoji.catalog] dagi **kalit** (emoji belgisining o'zi emas):
 /// backendga aynan shu kalit yoziladi.
 class EmojiPickerSheet extends StatelessWidget {
-  const EmojiPickerSheet({required this.selected, super.key});
+  const EmojiPickerSheet({required this.selected, this.color, super.key});
 
   final String selected;
 
-  static Future<String?> show(BuildContext context, String selected) {
+  /// Joriy odat rangi — ikonkalar o'sha rangda ko'rinadi.
+  final String? color;
+
+  static Future<String?> show(
+    BuildContext context,
+    String selected, {
+    String? color,
+  }) {
     return showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => EmojiPickerSheet(selected: selected),
+      builder: (_) => EmojiPickerSheet(selected: selected, color: color),
     );
   }
 
@@ -52,7 +61,7 @@ class EmojiPickerSheet extends StatelessWidget {
                       physics: const NeverScrollableScrollPhysics(),
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 6,
+                            crossAxisCount: 5,
                             mainAxisSpacing: 8,
                             crossAxisSpacing: 8,
                           ),
@@ -66,18 +75,19 @@ class EmojiPickerSheet extends StatelessWidget {
                           borderRadius: BorderRadius.circular(14),
                           child: Container(
                             decoration: BoxDecoration(
-                              color: isSelected
-                                  ? AppColors.primary.withValues(alpha: 0.25)
-                                  : AppColors.surfaceHigh,
-                              borderRadius: BorderRadius.circular(14),
-                              border: isSelected
-                                  ? Border.all(color: AppColors.primary)
-                                  : null,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                width: 2,
+                                color: isSelected
+                                    ? AppColors.textPrimary
+                                    : Colors.transparent,
+                              ),
                             ),
                             alignment: Alignment.center,
-                            child: Text(
-                              HabitEmoji.resolve(key),
-                              style: const TextStyle(fontSize: 24),
+                            child: HabitIconTile(
+                              iconKey: key,
+                              color: color,
+                              size: 42,
                             ),
                           ),
                         );
@@ -161,6 +171,7 @@ class EmojiListTile extends StatelessWidget {
     required this.title,
     required this.onTap,
     this.trailing,
+    this.color = '#8E8E93',
     super.key,
   });
 
@@ -168,6 +179,9 @@ class EmojiListTile extends StatelessWidget {
   final String title;
   final VoidCallback onTap;
   final Widget? trailing;
+
+  /// iOS sozlamalaridagidek: har qatorning o'z rangli ikonkasi.
+  final String? color;
 
   @override
   Widget build(BuildContext context) {
@@ -179,14 +193,8 @@ class EmojiListTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             children: [
-              SizedBox(
-                width: 32,
-                child: Text(
-                  HabitEmoji.resolve(emojiKey),
-                  style: const TextStyle(fontSize: 22),
-                ),
-              ),
-              const SizedBox(width: 10),
+              HabitIconTile(iconKey: emojiKey, color: color, size: 30),
+              const SizedBox(width: 12),
               Expanded(child: Text(title, style: AppTextStyles.body)),
               trailing ??
                   const WdIcon(
@@ -229,4 +237,25 @@ class CardGroup extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Sana tanlash (bugundan bir oy orqaga — ikki yil oldinga).
+Future<DateTime?> pickDate(BuildContext context, DateTime initial) async {
+  final today = ApiDate.dayOnly(DateTime.now());
+  final first = today.subtract(const Duration(days: 31));
+  final last = today.add(const Duration(days: 730));
+  final start = initial.isBefore(first)
+      ? first
+      : (initial.isAfter(last) ? last : initial);
+
+  final picked = await showDatePicker(
+    context: context,
+    initialDate: start,
+    firstDate: first,
+    lastDate: last,
+    helpText: AppStrings.pickDate,
+    cancelText: AppStrings.cancel,
+    confirmText: AppStrings.done,
+  );
+  return picked == null ? null : ApiDate.dayOnly(picked);
 }

@@ -68,3 +68,33 @@ class IntervalRepeat extends RepeatRule {
   @override
   List<Object?> get props => [everyNDays];
 }
+
+/// Mashg'ulot dasturiga biriktirilgan odat: dasturning dam olinmaydigan
+/// kunlarida bajariladi.
+///
+/// Qoidani server dastur saqlanganda o'zi qo'yadi — ilova uni tanlamaydi va
+/// o'zgartirmaydi. Qaysi kun mashq ekanini faqat server biladi, shuning uchun
+/// lokal tekshiruv har doim `true` (bosh ekranni baribir server filtrlaydi).
+class ProgramRepeat extends RepeatRule {
+  const ProgramRepeat();
+
+  @override
+  bool occursOn(DateTime date, {required DateTime startedAt}) => true;
+}
+
+/// Bir martalik vazifa: faqat [date] kuni, boshqa hech qachon.
+class OnceRepeat extends RepeatRule {
+  const OnceRepeat(this.date);
+
+  /// Vaqtsiz kun.
+  final DateTime date;
+
+  @override
+  bool occursOn(DateTime date, {required DateTime startedAt}) =>
+      date.year == this.date.year &&
+      date.month == this.date.month &&
+      date.day == this.date.day;
+
+  @override
+  List<Object?> get props => [date];
+}

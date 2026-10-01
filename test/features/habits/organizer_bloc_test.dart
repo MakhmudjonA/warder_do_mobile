@@ -71,6 +71,16 @@ class FakeHabitsRepository implements HabitsRepository {
   }
 
   @override
+  Future<Either<Failure, Habit>> parseHabit(String text) async =>
+      Right(habit(''));
+
+  @override
+  Future<Either<Failure, Habit>> editHabit(
+    Habit original,
+    Habit edited,
+  ) async => Right(edited);
+
+  @override
   Future<Either<Failure, Unit>> deleteHabit(String id) async {
     deleted.add(id);
     return const Right(unit);

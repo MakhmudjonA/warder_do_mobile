@@ -1,12 +1,15 @@
 import 'package:dartz/dartz.dart';
 
 import '../../../../core/error/exceptions.dart';
+import '../../../../core/error/failure_mapper.dart';
 import '../../../../core/error/failures.dart';
 import '../../domain/entities/user.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_local_data_source.dart';
 import '../datasources/auth_remote_data_source.dart';
+import '../models/auth_token_model.dart';
 import '../models/user_model.dart';
+import '../../domain/entities/telegram_login.dart';
 
 /// Domain kontraktining yagona implementatsiyasi.
 ///
@@ -30,7 +33,7 @@ class AuthRepositoryImpl implements AuthRepository {
     String? fullName,
     String? timezone,
   }) {
-    return _guard(() async {
+    return guardApi(() async {
       await _remote.register(
         email: email,
         password: password,
@@ -48,12 +51,46 @@ class AuthRepositoryImpl implements AuthRepository {
     required String email,
     required String password,
   }) {
-    return _guard(() => _authenticate(email: email, password: password));
+    return guardApi(() => _authenticate(email: email, password: password));
+  }
+
+  @override
+  Future<Either<Failure, User>> loginWithTelegram({
+    required String initData,
+    String? timezone,
+  }) {
+    return guardApi(() async {
+      final token = await _remote.loginWithTelegram(
+        initData: initData,
+        timezone: timezone,
+      );
+      return _startSession(token);
+    });
+  }
+
+  @override
+  Future<Either<Failure, TelegramLoginTicket>> startTelegramLogin({
+    String? timezone,
+  }) => guardApi(() => _remote.requestTelegramLogin(timezone: timezone));
+
+  @override
+  Future<Either<Failure, TelegramLoginResult>> checkTelegramLogin(String code) {
+    return guardApi(() async {
+      final (status, token) = await _remote.pollTelegramLogin(code);
+      if (status != TelegramLoginStatus.confirmed || token == null) {
+        return TelegramLoginResult(
+          status == TelegramLoginStatus.confirmed
+              ? TelegramLoginStatus.cancelled
+              : status,
+        );
+      }
+      return TelegramLoginResult(status, await _startSession(token));
+    });
   }
 
   @override
   Future<Either<Failure, User>> getCurrentUser() {
-    return _guard(() async {
+    return guardApi(() async {
       final user = await _remote.getMe();
       await _local.cacheUser(user);
       return user;
@@ -64,11 +101,13 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<Either<Failure, User>> updateProfile({
     String? fullName,
     String? timezone,
+    int? taskRemindBefore,
   }) {
-    return _guard(() async {
+    return guardApi(() async {
       final user = await _remote.updateMe(
         fullName: fullName,
         timezone: timezone,
+        taskRemindBefore: taskRemindBefore,
       );
       await _local.cacheUser(user);
       return user;
@@ -77,15 +116,15 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<Either<Failure, Unit>> logout() async {
-    // Refresh tokenни serverда bekor qilamiz (best-effort) — shu qurilma
-    // sessiyasi o'chadi. Internet bo'lmasa ham lokal chiqishни to'xtatmaymiz.
+    // Refresh tokenni serverda bekor qilamiz (best-effort) — shu qurilma
+    // sessiyasi o'chadi. Internet bo'lmasa ham lokal chiqishni to'xtatmaymiz.
     try {
       final refreshToken = await _local.getRefreshToken();
       if (refreshToken != null && refreshToken.isNotEmpty) {
         await _remote.logout(refreshToken);
       }
     } on Exception catch (_) {
-      // Serverга yetib bormasa mayli — lokal tokenlarni baribir o'chiramiz.
+      // Serverga yetib bormasa mayli — lokal tokenlarni baribir o'chiramiz.
     }
     await _local.clearSession();
     return const Right(unit);
@@ -102,7 +141,7 @@ class AuthRepositoryImpl implements AuthRepository {
       }
 
       // Access eskirgan bo'lsa ham `/me` ni chaqiramiz — interceptor kerak
-      // bo'lganда avval `/auth/refresh` qiladi. Refresh ham o'lik bo'lsa,
+      // bo'lganda avval `/auth/refresh` qiladi. Refresh ham o'lik bo'lsa,
       // 401 qaytadi va quyidagi `catch` sessiyani tozalaydi.
 
       // Token bor — lekin foydalanuvchi bloklangan yoki o'chirilgan bo'lishi
@@ -115,7 +154,7 @@ class AuthRepositoryImpl implements AuthRepository {
         await _local.clearSession();
         return const Right(null);
       }
-      return Left(_mapServer(e));
+      return Left(mapServerException(e));
     } on NetworkException {
       // Internet yo'q — cache'dagi user bilan offline ishlashga ruxsat beramiz.
       return Right(await _safeCachedUser());
@@ -141,6 +180,11 @@ class AuthRepositoryImpl implements AuthRepository {
     required String password,
   }) async {
     final token = await _remote.login(email: email, password: password);
+    return _startSession(token);
+  }
+
+  /// Tokenni saqlab, profilni oladi — login'ning har qanday turi uchun.
+  Future<UserModel> _startSession(AuthTokenModel token) async {
     // Tokenni `/me` dan **oldin** saqlaymiz — interceptor uni o'sha so'rovga
     // qo'shishi kerak.
     await _local.cacheToken(token);
@@ -154,40 +198,6 @@ class AuthRepositoryImpl implements AuthRepository {
       return await _local.getUser();
     } on CacheException {
       return null;
-    }
-  }
-
-  /// Barcha exception turlarini bitta joyda `Failure` ga aylantiradi.
-  Future<Either<Failure, T>> _guard<T>(Future<T> Function() action) async {
-    try {
-      return Right(await action());
-    } on ServerException catch (e) {
-      return Left(_mapServer(e));
-    } on NetworkException catch (e) {
-      return Left(NetworkFailure(e.message));
-    } on CacheException catch (e) {
-      return Left(CacheFailure(e.message));
-    } on Exception catch (_) {
-      return const Left(UnknownFailure());
-    }
-  }
-
-  Failure _mapServer(ServerException e) {
-    switch (e.statusCode) {
-      case 401:
-        return UnauthorizedFailure(e.message);
-      case 403:
-        return ForbiddenFailure(e.message);
-      case 409:
-        return ConflictFailure(e.message);
-      case 422:
-        return ValidationFailure(
-          message: e.message,
-          fieldErrors: e.fieldErrors,
-        );
-      default:
-        if (e.statusCode >= 500) return ServerFailure(e.message);
-        return UnknownFailure(e.message);
     }
   }
 }

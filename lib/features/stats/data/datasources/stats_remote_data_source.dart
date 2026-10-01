@@ -7,8 +7,8 @@ import '../models/stats_models.dart';
 
 /// Statistika ekranining uchta so'rovi: kalendar, rekordlar, haftalik jadval.
 ///
-/// Har biri oraliqdagi barcha ma'lumotni **bitta** so'rovda oladi va serverда
-/// hisoblaydi — odat yoki kun soni oshganда ham so'rovlar soni o'zgarmaydi.
+/// Har biri oraliqdagi barcha ma'lumotni **bitta** so'rovda oladi va serverda
+/// hisoblaydi — odat yoki kun soni oshganda ham so'rovlar soni o'zgarmaydi.
 abstract class StatsRemoteDataSource {
   Future<List<CalendarDayModel>> getCalendar({
     required DateTime from,

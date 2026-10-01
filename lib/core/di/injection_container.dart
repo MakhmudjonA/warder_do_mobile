@@ -8,6 +8,7 @@ import '../../features/auth/data/repositories/auth_repository_impl.dart';
 import '../../features/auth/domain/repositories/auth_repository.dart';
 import '../../features/auth/domain/usecases/get_current_user.dart';
 import '../../features/auth/domain/usecases/login_user.dart';
+import '../../features/auth/domain/usecases/login_with_telegram.dart';
 import '../../features/auth/domain/usecases/logout_user.dart';
 import '../../features/auth/domain/usecases/register_user.dart';
 import '../../features/auth/domain/usecases/restore_session.dart';
@@ -27,6 +28,7 @@ import '../../features/habits/domain/repositories/progress_repository.dart';
 import '../../features/habits/domain/usecases/habit_usecases.dart';
 import '../../features/habits/presentation/bloc/habits_bloc.dart';
 import '../../features/habits/presentation/bloc/organizer_bloc.dart';
+import '../../features/habits/presentation/bloc/quick_add_cubit.dart';
 import '../../features/programs/data/datasources/programs_remote_data_source.dart';
 import '../../features/programs/data/repositories/programs_repository_impl.dart';
 import '../../features/programs/domain/repositories/programs_repository.dart';
@@ -40,6 +42,8 @@ import '../../features/stats/presentation/bloc/stats_bloc.dart';
 import '../network/dio_client.dart';
 import '../network/session_notifier.dart';
 import '../storage/token_storage.dart';
+import '../telegram/telegram.dart';
+import '../../features/auth/domain/usecases/telegram_app_login.dart';
 
 /// Global service locator.
 final GetIt sl = GetIt.instance;
@@ -53,6 +57,9 @@ final GetIt sl = GetIt.instance;
 Future<void> initDependencies({TokenStorage? storageOverride}) async {
   // --- Core ---
   sl.registerLazySingleton<SessionNotifier>(SessionNotifier.new);
+
+  // Telegram Mini App ichida — haqiqiy SDK, qolgan joyda `NoTelegram`.
+  sl.registerLazySingleton<TelegramPlatform>(createTelegramPlatform);
 
   sl.registerLazySingleton<TokenStorage>(
     () => storageOverride ?? SecureTokenStorage(const FlutterSecureStorage()),
@@ -88,6 +95,9 @@ Future<void> initDependencies({TokenStorage? storageOverride}) async {
   sl.registerLazySingleton(() => GetCurrentUser(sl<AuthRepository>()));
   sl.registerLazySingleton(() => UpdateProfile(sl<AuthRepository>()));
   sl.registerLazySingleton(() => RestoreSession(sl<AuthRepository>()));
+  sl.registerLazySingleton(() => LoginWithTelegram(sl<AuthRepository>()));
+  sl.registerLazySingleton(() => StartTelegramLogin(sl<AuthRepository>()));
+  sl.registerLazySingleton(() => CheckTelegramLogin(sl<AuthRepository>()));
 
   // --- Bloc ---
   // Singleton, chunki auth holati butun ilova uchun bitta va router ham
@@ -101,6 +111,10 @@ Future<void> initDependencies({TokenStorage? storageOverride}) async {
       updateProfile: sl(),
       restoreSession: sl(),
       sessionNotifier: sl<SessionNotifier>(),
+      loginWithTelegram: sl(),
+      telegram: sl<TelegramPlatform>(),
+      startTelegramLogin: sl(),
+      checkTelegramLogin: sl(),
     ),
   );
 
@@ -122,7 +136,7 @@ void _registerStats() {
   sl.registerLazySingleton(() => GetStatsRecords(sl<StatsRepository>()));
   sl.registerLazySingleton(() => GetStatsWeekly(sl<StatsRepository>()));
 
-  // Ekran IndexedStack ичida tirik qoladi — bitta instansiya yetarli.
+  // Ekran IndexedStack ichida tirik qoladi — bitta instansiya yetarli.
   sl.registerFactory<StatsBloc>(
     () => StatsBloc(
       getCalendar: sl(),
@@ -144,7 +158,7 @@ void _registerPrograms() {
   sl.registerLazySingleton(() => GenerateProgram(sl<ProgramsRepository>()));
   sl.registerLazySingleton(() => SaveProgram(sl<ProgramsRepository>()));
 
-  // Har ochilганда yangi holat kerak — shuning uchun factory.
+  // Har ochilganda yangi holat kerak — shuning uchun factory.
   sl.registerFactory<ProgramImportBloc>(
     () => ProgramImportBloc(generateProgram: sl(), saveProgram: sl()),
   );
@@ -169,6 +183,10 @@ void _registerHabits() {
   sl.registerLazySingleton(() => LogHabit(sl<HabitsRepository>()));
   sl.registerLazySingleton(() => UnlogHabit(sl<HabitsRepository>()));
   sl.registerLazySingleton(() => CreateHabit(sl<HabitsRepository>()));
+  sl.registerLazySingleton(() => UpdateHabit(sl<HabitsRepository>()));
+  sl.registerLazySingleton(() => ParseHabitText(sl<HabitsRepository>()));
+  // Har ochilganda toza holat.
+  sl.registerFactory<QuickAddCubit>(() => QuickAddCubit(sl()));
   sl.registerLazySingleton(() => GetHabitTemplates(sl<HabitsRepository>()));
   sl.registerLazySingleton(() => ReorderHabits(sl<HabitsRepository>()));
   sl.registerLazySingleton(() => MoveHabitToGroup(sl<HabitsRepository>()));
@@ -183,6 +201,7 @@ void _registerHabits() {
       logHabit: sl(),
       unlogHabit: sl(),
       createHabit: sl(),
+      updateHabit: sl(),
     ),
   );
 }

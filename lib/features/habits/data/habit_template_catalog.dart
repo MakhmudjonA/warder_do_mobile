@@ -88,7 +88,7 @@ class HabitTemplateCatalog {
           color: _orange,
           category: 'health',
           goalValue: 5,
-          goalUnit: 'минут',
+          goalUnit: 'minute',
         ),
         _t(
           key: 'vitamins',
@@ -104,7 +104,7 @@ class HabitTemplateCatalog {
           color: _blue,
           category: 'health',
           goalValue: 2,
-          goalUnit: 'литров',
+          goalUnit: 'liter',
         ),
       ],
     ),
@@ -118,7 +118,7 @@ class HabitTemplateCatalog {
           color: _green,
           category: 'health',
           goalValue: 20,
-          goalUnit: 'минут',
+          goalUnit: 'minute',
         ),
         _t(
           key: 'exercise',
@@ -127,7 +127,7 @@ class HabitTemplateCatalog {
           color: _green,
           category: 'health',
           goalValue: 30,
-          goalUnit: 'минут',
+          goalUnit: 'minute',
         ),
         _t(
           key: 'deep_work',
@@ -135,7 +135,7 @@ class HabitTemplateCatalog {
           icon: 'deep_work',
           color: _teal,
           goalValue: 90,
-          goalUnit: 'минут',
+          goalUnit: 'minute',
         ),
         _t(
           key: 'meditate',
@@ -143,7 +143,7 @@ class HabitTemplateCatalog {
           icon: 'meditation',
           color: _purple,
           goalValue: 10,
-          goalUnit: 'минут',
+          goalUnit: 'minute',
         ),
         _t(
           key: 'read_book',
@@ -151,7 +151,7 @@ class HabitTemplateCatalog {
           icon: 'book',
           color: _indigo,
           goalValue: 20,
-          goalUnit: 'страниц',
+          goalUnit: 'page',
         ),
         _t(
           key: 'learn_language',
@@ -159,7 +159,7 @@ class HabitTemplateCatalog {
           icon: 'language',
           color: _blue,
           goalValue: 15,
-          goalUnit: 'минут',
+          goalUnit: 'minute',
         ),
         _t(
           key: 'code',
@@ -167,7 +167,7 @@ class HabitTemplateCatalog {
           icon: 'code',
           color: _teal,
           goalValue: 60,
-          goalUnit: 'минут',
+          goalUnit: 'minute',
         ),
         _t(
           key: 'play_instrument',
@@ -175,7 +175,7 @@ class HabitTemplateCatalog {
           icon: 'instrument',
           color: _red,
           goalValue: 30,
-          goalUnit: 'минут',
+          goalUnit: 'minute',
         ),
       ],
     ),
@@ -222,7 +222,7 @@ class HabitTemplateCatalog {
           color: _indigo,
           category: 'health',
           goalValue: 8,
-          goalUnit: 'часов',
+          goalUnit: 'hour',
         ),
       ],
     ),
@@ -236,7 +236,7 @@ class HabitTemplateCatalog {
           color: _red,
           category: 'health',
           goalValue: 10,
-          goalUnit: 'минут',
+          goalUnit: 'minute',
         ),
         _t(
           key: 'gym',
@@ -253,7 +253,7 @@ class HabitTemplateCatalog {
           color: _red,
           category: 'health',
           goalValue: 3,
-          goalUnit: 'км',
+          goalUnit: 'km',
         ),
         _t(
           key: 'swim',
@@ -262,7 +262,7 @@ class HabitTemplateCatalog {
           color: _blue,
           category: 'health',
           goalValue: 30,
-          goalUnit: 'минут',
+          goalUnit: 'minute',
           repeat: const WeeklyRepeat([2, 5]),
         ),
         _t(
@@ -272,7 +272,7 @@ class HabitTemplateCatalog {
           color: _teal,
           category: 'health',
           goalValue: 10000,
-          goalUnit: 'шагов',
+          goalUnit: 'step',
         ),
         _t(
           key: 'healthy_food',
@@ -334,7 +334,7 @@ class HabitTemplateCatalog {
           icon: 'study',
           color: _indigo,
           goalValue: 30,
-          goalUnit: 'минут',
+          goalUnit: 'minute',
         ),
         _t(key: 'tidy_up', title: 'Убраться', icon: 'clean', color: _blue),
         _t(
@@ -381,7 +381,7 @@ class HabitTemplateCatalog {
           category: 'bad',
           type: HabitType.bad,
           goalValue: 30,
-          goalUnit: 'минут',
+          goalUnit: 'minute',
           goalType: GoalType.atMost,
         ),
         _t(
@@ -408,7 +408,7 @@ class HabitTemplateCatalog {
           category: 'bad',
           type: HabitType.bad,
           goalValue: 2,
-          goalUnit: 'раз',
+          goalUnit: 'time',
           goalType: GoalType.atMost,
         ),
         _t(

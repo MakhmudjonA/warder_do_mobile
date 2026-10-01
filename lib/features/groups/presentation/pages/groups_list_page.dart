@@ -12,6 +12,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/wd_icon.dart';
 import '../../domain/entities/group.dart';
 import '../bloc/groups_bloc.dart';
+import '../../../../core/widgets/habit_icon_tile.dart';
 
 /// Экран «Группы» — наши собственные группы, без всяких шаблонов.
 ///
@@ -297,10 +298,7 @@ class _GroupRow extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
               ],
-              Text(
-                HabitEmoji.resolve(group.icon),
-                style: const TextStyle(fontSize: 20),
-              ),
+              HabitIconTile(iconKey: group.icon, size: 36, onColor: true),
               const SizedBox(width: 14),
               Expanded(
                 child: Text(

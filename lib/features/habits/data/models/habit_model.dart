@@ -18,6 +18,12 @@ class RepeatRuleMapper {
         return WeeklyRepeat(days);
       case 'interval':
         return IntervalRepeat((json?['every_n_days'] as num?)?.toInt() ?? 1);
+      case 'program':
+        return const ProgramRepeat();
+      case 'once':
+        final date = ApiDate.tryParse(json?['date']);
+        // Buzuq sana — ilova qulamasin, "har kuni" deb o'qiymiz.
+        return date == null ? const DailyRepeat() : OnceRepeat(date);
       default:
         // Noma'lum tur kelsa ilova qulamasligi uchun — har kuni.
         return const DailyRepeat();
@@ -31,6 +37,8 @@ class RepeatRuleMapper {
       'type': 'interval',
       'every_n_days': everyNDays,
     },
+    ProgramRepeat() => {'type': 'program'},
+    OnceRepeat(:final date) => {'type': 'once', 'date': ApiDate.format(date)},
   };
 }
 
@@ -51,6 +59,7 @@ class HabitModel extends Habit {
     super.goalUnit,
     super.goalType,
     super.reminders,
+    super.remindBeforeMinutes,
   });
 
   factory HabitModel.fromJson(Map<String, dynamic> json) {
@@ -73,6 +82,7 @@ class HabitModel extends Habit {
               ?.map((e) => Reminder.parse((e as Map)['time'] as String))
               .toList() ??
           const [],
+      remindBeforeMinutes: (json['remind_before_minutes'] as num?)?.toInt(),
       order: (json['order'] as num?)?.toInt() ?? 0,
       isArchived: json['is_archived'] as bool? ?? false,
       createdAt: json['created_at'] == null
@@ -100,43 +110,60 @@ class HabitModel extends Habit {
       if (hasGoal) 'goal_type': (habit.goalType ?? GoalType.atLeast).json,
       'repeat_rule': RepeatRuleMapper.toJson(habit.repeatRule),
       'reminders': habit.reminders.map((r) => {'time': r.json}).toList(),
+      'remind_before_minutes': ?habit.remindBeforeMinutes,
     };
   }
 
-  /// `PATCH /habits/{id}` uchun — faqat o'zgargan maydonlar.
+  /// `PATCH /habits/{id}` uchun — [original] va [edited] orasidagi farq.
   ///
-  /// `clearGoal: true` bo'lsa `goal_value: null` yuboriladi; server unda
-  /// `goal_unit` va `goal_type` ni ham o'zi tozalaydi.
-  static Map<String, dynamic> toUpdateJson({
-    String? title,
-    String? icon,
-    String? color,
-    HabitType? type,
-    String? description,
-    double? goalValue,
-    String? goalUnit,
-    GoalType? goalType,
-    RepeatRule? repeatRule,
-    List<Reminder>? reminders,
-    String? groupId,
-    bool clearGroup = false,
-    bool clearGoal = false,
-  }) {
+  /// Faqat o'zgargan maydonlar yuboriladi: server `exclude_unset` bilan
+  /// ishlaydi, shuning uchun yuborilmagan kalit "o'zgarmasin" degani, `null`
+  /// esa "tozalansin" degani (`description`, `group_id`, `goal_value`).
+  /// Maqsad tozalansa server `goal_unit` va `goal_type` ni ham o'zi tozalaydi.
+  ///
+  /// Dastur odatining `repeat_rule` i hech qachon yuborilmaydi — uni faqat
+  /// server boshqaradi.
+  static Map<String, dynamic> toChangesJson(Habit original, Habit edited) {
+    final goalChanged =
+        original.goalValue != edited.goalValue ||
+        original.goalUnit != edited.goalUnit ||
+        original.goalType != edited.goalType;
+    final repeatChanged =
+        original.repeatRule != edited.repeatRule &&
+        edited.repeatRule is! ProgramRepeat &&
+        original.repeatRule is! ProgramRepeat;
+
     return {
-      'title': ?title,
-      'icon': ?icon,
-      'color': ?color,
-      if (type != null) 'type': type.json,
-      'description': ?description,
-      if (clearGoal) 'goal_value': null else 'goal_value': ?goalValue,
-      if (!clearGoal) 'goal_unit': ?goalUnit,
-      if (!clearGoal && goalType != null) 'goal_type': goalType.json,
-      if (repeatRule != null)
-        'repeat_rule': RepeatRuleMapper.toJson(repeatRule),
-      if (reminders != null)
-        'reminders': reminders.map((r) => {'time': r.json}).toList(),
-      if (clearGroup) 'group_id': null else 'group_id': ?groupId,
+      if (original.title != edited.title) 'title': edited.title,
+      if (original.icon != edited.icon) 'icon': edited.icon,
+      if (original.color != edited.color) 'color': edited.color,
+      if (original.type != edited.type) 'type': edited.type.json,
+      if (original.description != edited.description)
+        'description': edited.description,
+      if (original.groupId != edited.groupId) 'group_id': edited.groupId,
+      if (goalChanged) ...{
+        'goal_value': edited.goalValue,
+        if (edited.goalValue != null) ...{
+          'goal_unit': edited.goalUnit,
+          'goal_type': (edited.goalType ?? GoalType.atLeast).json,
+        },
+      },
+      if (repeatChanged)
+        'repeat_rule': RepeatRuleMapper.toJson(edited.repeatRule),
+      if (!_sameReminders(original.reminders, edited.reminders))
+        'reminders': edited.reminders.map((r) => {'time': r.json}).toList(),
+      // `null` — standartga qaytarish, shuning uchun yuborilaveradi.
+      if (original.remindBeforeMinutes != edited.remindBeforeMinutes)
+        'remind_before_minutes': edited.remindBeforeMinutes,
     };
+  }
+
+  static bool _sameReminders(List<Reminder> a, List<Reminder> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 
   /// Reorder so'rovi — body **massiv**, obyekt emas.
@@ -146,4 +173,9 @@ class HabitModel extends Habit {
   ];
 
   static String formatDate(DateTime date) => ApiDate.format(date);
+
+  /// `POST /habits/parse` javobi — saqlanmagan qoralama: `id` yo'q, qolgani
+  /// `HabitCreate` bilan bir xil.
+  factory HabitModel.fromDraftJson(Map<String, dynamic> json) =>
+      HabitModel.fromJson({...json, 'id': ''});
 }

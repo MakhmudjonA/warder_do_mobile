@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_icons.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/habit_visuals.dart';
+import '../../../../core/utils/api_date.dart';
+import '../../../../core/utils/date_labels.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -13,6 +15,7 @@ import '../../../programs/presentation/pages/program_import_sheet.dart'
     show describeTarget;
 import '../../domain/entities/daily_habit.dart';
 import '../../domain/entities/repeat_rule.dart';
+import '../../../../core/widgets/habit_icon_tile.dart';
 
 /// Bosh ekrandagi odat kartasi.
 ///
@@ -68,9 +71,11 @@ class HabitCard extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
               child: Row(
                 children: [
-                  Text(
-                    HabitEmoji.resolve(item.habit.icon),
-                    style: const TextStyle(fontSize: 22),
+                  HabitIconTile(
+                    iconKey: item.habit.icon,
+                    color: item.habit.color,
+                    size: 38,
+                    onColor: done,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -96,11 +101,14 @@ class HabitCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: AppTextStyles.caption.copyWith(
                             fontSize: 12,
+                            fontWeight: _overdue ? FontWeight.w600 : null,
                             color: done
                                 ? AppColors.textOnPrimary.withValues(
                                     alpha: 0.85,
                                   )
-                                : AppColors.textSecondary,
+                                : (_overdue
+                                      ? AppColors.danger
+                                      : AppColors.textSecondary),
                           ),
                         ),
                       ],
@@ -122,8 +130,32 @@ class HabitCard extends StatelessWidget {
     );
   }
 
+  /// Vazifa vaqti o'tib ketgan va hali bajarilmagan (faqat bugun uchun).
+  bool get _overdue {
+    final time = item.habit.firstReminder;
+    if (!item.habit.isTask || item.isCompleted || time == null) return false;
+    if (!ApiDate.isToday(item.date)) return false;
+    final now = DateTime.now();
+    return now.hour * 60 + now.minute > time.hour * 60 + time.minute;
+  }
+
   /// "Har kuni, 1,2/2 litr" — jadval va progressni bitta qatorga jamlaydi.
   String _subtitle() {
+    // Vazifa: "⏰ 15:00" (+ "просрочено"); sana — faqat bugun bo'lmasa.
+    if (item.habit.isTask) {
+      final time = item.habit.firstReminder;
+      final parts = <String>[
+        if (time != null) '⏰ ${time.json}',
+        if (_overdue) AppStrings.overdue,
+        if (item.habit.repeatRule case OnceRepeat(
+          :final date,
+        ) when !ApiDate.isToday(date))
+          dayLabel(date),
+        if (item.progressLabel.isNotEmpty) item.progressLabel,
+      ];
+      return parts.isEmpty ? AppStrings.noTime : parts.join(' · ');
+    }
+
     // Dastur odati: jadval ("program") o'rniga o'sha kunning yuklamasini
     // ko'rsatamiz — "3× максимум" kabi. To'liq izoh kartani bosganda.
     final programDay = item.programDay;
@@ -136,6 +168,9 @@ class HabitCard extends StatelessWidget {
         '%s',
         '$everyNDays',
       ),
+      ProgramRepeat() => AppStrings.byProgram,
+      OnceRepeat(:final date) =>
+        '${AppStrings.once}, ${dayLabel(date).toLowerCase()}',
     };
 
     final progress = item.progressLabel;

@@ -4,15 +4,19 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_icons.dart';
 import '../../../../core/constants/app_strings.dart';
-import '../../../../core/constants/habit_visuals.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/usecases/usecase.dart';
+import '../../../../core/utils/api_date.dart';
+import '../../../../core/utils/date_labels.dart';
+import '../../../../core/widgets/pickers.dart';
 import '../../../../core/widgets/wd_icon.dart';
 import '../../../groups/presentation/bloc/groups_bloc.dart';
 import '../../domain/entities/habit.dart';
 import '../../domain/entities/repeat_rule.dart';
+import '../../../../core/widgets/habit_icon_tile.dart';
+import '../../../../core/constants/goal_units.dart';
 
 /// Цель привычки одним объектом — так её удобнее возвращать из панели.
 class GoalDraft {
@@ -96,6 +100,59 @@ class HabitTypeSheet extends StatelessWidget {
   }
 }
 
+/// Напоминание заранее. Возвращает [RemindBeforeSheet.auto] для «Авто»
+/// (null на сервере), иначе минуты; null — панель закрыли без выбора.
+class RemindBeforeSheet extends StatelessWidget {
+  const RemindBeforeSheet({required this.selected, super.key});
+
+  /// `null` — «Авто».
+  final int? selected;
+
+  static const int auto = -1;
+
+  static Future<int?> show(BuildContext context, int? selected) {
+    return showModalBottomSheet<int>(
+      context: context,
+      builder: (_) => RemindBeforeSheet(selected: selected),
+    );
+  }
+
+  static String label(int? minutes) => switch (minutes) {
+    null => AppStrings.remindBeforeAuto,
+    0 => AppStrings.remindBeforeOff,
+    60 => AppStrings.remindBeforeHour,
+    final m => AppStrings.remindBeforeFormat.replaceFirst('%s', '$m'),
+  };
+
+  static const List<int?> _options = [null, 0, 5, 10, 15, 30, 60];
+
+  @override
+  Widget build(BuildContext context) {
+    return _SheetScaffold(
+      title: AppStrings.remindBeforeLabel,
+      child: ListView(
+        shrinkWrap: true,
+        children: [
+          for (final option in _options)
+            ListTile(
+              title: Text(label(option), style: AppTextStyles.body),
+              subtitle: option == null
+                  ? const Text(
+                      AppStrings.remindBeforeAutoHint,
+                      style: AppTextStyles.caption,
+                    )
+                  : null,
+              trailing: option == selected
+                  ? const WdIcon(AppIcons.check, color: AppColors.primary)
+                  : null,
+              onTap: () => Navigator.of(context).pop(option ?? auto),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Выбор группы. Пустое значение — «Без группы» (`group_id: null`).
 class GroupPickerSheet extends StatelessWidget {
   const GroupPickerSheet({required this.selectedId, super.key});
@@ -147,16 +204,14 @@ class GroupPickerSheet extends StatelessWidget {
               ),
               for (final group in state.groups)
                 ListTile(
-                  leading: Text(
-                    HabitEmoji.resolve(group.icon),
-                    style: const TextStyle(fontSize: 20),
+                  leading: HabitIconTile(
+                    iconKey: group.icon,
+                    color: group.color,
+                    size: 32,
                   ),
                   title: Text(group.name, style: AppTextStyles.body),
                   trailing: group.id == selectedId
-                      ? const WdIcon(
-                          AppIcons.check,
-                          color: AppColors.primary,
-                        )
+                      ? const WdIcon(AppIcons.check, color: AppColors.primary)
                       : null,
                   onTap: () => Navigator.of(context).pop(group.id),
                 ),
@@ -191,7 +246,7 @@ class _GoalSheetState extends State<GoalSheet> {
     text: widget.initial.value == null ? '' : _format(widget.initial.value!),
   );
 
-  late String _unit = widget.initial.unit ?? AppStrings.goalUnits.first;
+  late String _unit = widget.initial.unit ?? GoalUnits.choices.first;
   late GoalType _type = widget.initial.type;
 
   static String _format(double v) =>
@@ -249,9 +304,10 @@ class _GoalSheetState extends State<GoalSheet> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              for (final unit in AppStrings.goalUnits)
+              // Eski ruscha qiymat ("литров") ro'yxatda yo'q — uni ham ko'rsatamiz.
+              for (final unit in {...GoalUnits.choices, _unit})
                 ChoiceChip(
-                  label: Text(unit),
+                  label: Text(GoalUnits.label(unit)),
                   selected: unit == _unit,
                   onSelected: (_) => setState(() => _unit = unit),
                   showCheckmark: false,
@@ -337,6 +393,14 @@ class _RepeatSheetState extends State<RepeatSheet> {
     DailyRepeat() => 0,
     WeeklyRepeat() => 1,
     IntervalRepeat() => 2,
+    OnceRepeat() => 3,
+    // Форма не открывает эту панель для программы; на всякий случай — «каждый день».
+    ProgramRepeat() => 0,
+  };
+
+  late DateTime _onceDate = switch (widget.initial) {
+    OnceRepeat(:final date) => date,
+    _ => ApiDate.dayOnly(DateTime.now()),
   };
 
   late final Set<int> _days = switch (widget.initial) {
@@ -369,9 +433,11 @@ class _RepeatSheetState extends State<RepeatSheet> {
           return;
         }
         Navigator.of(context).pop(WeeklyRepeat(_days.toList()..sort()));
-      default:
+      case 2:
         final n = int.tryParse(_intervalController.text.trim()) ?? 0;
         Navigator.of(context).pop(IntervalRepeat(n < 1 ? 1 : n));
+      default:
+        Navigator.of(context).pop(OnceRepeat(_onceDate));
     }
   }
 
@@ -383,18 +449,26 @@ class _RepeatSheetState extends State<RepeatSheet> {
         shrinkWrap: true,
         padding: const EdgeInsets.symmetric(horizontal: 20),
         children: [
-          SegmentedButton<int>(
-            segments: const [
-              ButtonSegment(value: 0, label: Text(AppStrings.repeatDaily)),
-              ButtonSegment(value: 1, label: Text(AppStrings.repeatWeekly)),
-              ButtonSegment(value: 2, label: Text(AppStrings.repeatInterval)),
+          // Четыре режима не влезают в SegmentedButton на узком экране.
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final (mode, label) in const [
+                (0, AppStrings.repeatDaily),
+                (1, AppStrings.repeatWeekly),
+                (2, AppStrings.repeatInterval),
+                (3, AppStrings.repeatOnce),
+              ])
+                _choice(
+                  label: label,
+                  selected: _mode == mode,
+                  onTap: () => setState(() {
+                    _mode = mode;
+                    _error = null;
+                  }),
+                ),
             ],
-            selected: {_mode},
-            showSelectedIcon: false,
-            onSelectionChanged: (value) => setState(() {
-              _mode = value.first;
-              _error = null;
-            }),
           ),
           const SizedBox(height: 20),
 
@@ -435,6 +509,36 @@ class _RepeatSheetState extends State<RepeatSheet> {
             const SizedBox(height: 20),
           ],
 
+          if (_mode == 3) ...[
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final day in _quickDays)
+                  _choice(
+                    label: dayLabel(day),
+                    selected: ApiDate.isSameDay(day, _onceDate),
+                    onTap: () => setState(() => _onceDate = day),
+                  ),
+                if (!_quickDays.any((d) => ApiDate.isSameDay(d, _onceDate)))
+                  _choice(
+                    label: dayLabel(_onceDate),
+                    selected: true,
+                    onTap: () {},
+                  ),
+                _choice(
+                  label: '${AppStrings.otherDate}…',
+                  selected: false,
+                  onTap: () async {
+                    final picked = await pickDate(context, _onceDate);
+                    if (picked != null) setState(() => _onceDate = picked);
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+          ],
+
           if (_mode == 2) ...[
             TextField(
               controller: _intervalController,
@@ -471,6 +575,33 @@ class _RepeatSheetState extends State<RepeatSheet> {
       ),
     );
   }
+}
+
+/// Чип выбора в панели расписания.
+Widget _choice({
+  required String label,
+  required bool selected,
+  required VoidCallback onTap,
+}) {
+  return ChoiceChip(
+    label: Text(label),
+    selected: selected,
+    showCheckmark: false,
+    side: BorderSide.none,
+    backgroundColor: AppColors.surfaceHigh,
+    selectedColor: AppColors.primary,
+    labelStyle: AppTextStyles.caption.copyWith(
+      fontSize: 14,
+      color: selected ? AppColors.textOnPrimary : AppColors.textSecondary,
+    ),
+    onSelected: (_) => onTap(),
+  );
+}
+
+/// Сегодня и завтра — самые частые даты разовой задачи.
+List<DateTime> get _quickDays {
+  final today = ApiDate.dayOnly(DateTime.now());
+  return [today, today.add(const Duration(days: 1))];
 }
 
 /// Напоминания. Сервер только хранит время — уведомление ставит телефон.

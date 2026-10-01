@@ -15,6 +15,18 @@ class AppStrings {
   static const String getStarted = 'Начать';
   static const String haveAccount = 'Уже есть аккаунт? ';
   static const String signIn = 'Войти';
+  static const String signInWithTelegram = 'Войти через Telegram';
+  static const String telegramLoginTitle = 'Подтвердите вход в Telegram';
+  static const String telegramLoginBody =
+      'Нажмите «Войти» в боте. Код в боте должен совпадать с этим:';
+  static const String openTelegram = 'Открыть Telegram';
+  static const String telegramLoginWaiting = 'Ждём подтверждения…';
+  static const String telegramLoginCancelled = 'Вход отменён';
+  static const String telegramLoginExpired =
+      'Время на вход истекло. Попробуйте ещё раз';
+  static const String telegramNotInstalled =
+      'Не удалось открыть Telegram. Установите его и попробуйте снова';
+  static const String orEmail = 'или с email';
 
   // --- Вход ---
   static const String loginTitle = 'С возвращением';
@@ -52,6 +64,19 @@ class AppStrings {
       'В следующий раз для входа понадобятся email и пароль.';
   static const String cancel = 'Отмена';
   static const String profileSaved = 'Профиль обновлён';
+  static const String signInMethod = 'Вход';
+  static const String organize = 'Организация';
+  static const String groupsMenu = 'Группы';
+  static const String reorderMenu = 'Изменить порядок';
+  static const String notifications = 'Уведомления';
+  static const String taskLeadTitle = 'Напомнить заранее';
+  static const String taskLeadAuto = 'Авто';
+  static const String botRemindersHint =
+      'Напоминания приходят в Telegram-бот. О задачах бот предупреждает '
+      'заранее («Авто» — за 10 минут).';
+  static const String botChat = 'Чат с ботом';
+  static const String botUrl = 'https://t.me/warder_do_bot';
+  static const String viaTelegram = 'Через Telegram';
 
   // --- Валидация ---
   static const String errEmailRequired = 'Введите email';
@@ -75,6 +100,14 @@ class AppStrings {
   static const String errSessionExpired = 'Сессия истекла. Войдите снова';
   static const String errValidation = 'Проверьте введённые данные';
   static const String errNotFound = 'Не найдено';
+  static const String errConflict = 'Действие конфликтует с текущими данными';
+  static const String errNotAHabit =
+      'Не похоже на привычку или задачу. Например: «завтра в 15:00 к врачу»';
+  static const String errPrivateBot = 'Это личный бот — доступ закрыт';
+  static const String errTelegramAuth =
+      'Не удалось войти через Telegram. Откройте приложение из бота заново';
+  static const String errProgramExists =
+      'У этой привычки уже есть активная программа';
 
   // --- Нижняя навигация ---
   static const String tabHabits = 'Привычки';
@@ -83,7 +116,27 @@ class AppStrings {
 
   // --- Сегодня (главный экран) ---
   static const String today = 'Сегодня';
+  static const String tomorrow = 'Завтра';
+  static const String yesterday = 'Вчера';
   static const String progressToday = 'Прогресс дня';
+
+  // --- Меню «+» ---
+  static const String addMenuTitle = 'Добавить';
+  static const String addMenuAi = 'Описать словами';
+  static const String addMenuAiHint = 'AI поймёт дату, время и цель';
+  static const String addMenuTemplates = 'Из шаблонов';
+  static const String addMenuTemplatesHint = 'Готовые привычки на каждый день';
+  static const String addMenuCustom = 'Своя привычка';
+  static const String addMenuCustomHint = 'Заполнить всё самому';
+  static const String addMenuProgram = 'Программа тренировок';
+  static const String addMenuProgramHint = 'AI составит план на N дней';
+
+  // --- Задачи на «Сегодня» ---
+  static const String tasksSection = 'Задачи';
+  static const String overdue = 'просрочено';
+  static const String noTime = 'Без времени';
+  static const String markedDone = 'Отмечено';
+  static const String undo = 'Отменить';
   static const String progressAllDone = 'Всё выполнено! 🎉';
   static const String todayEmptyTitle = 'На этот день привычек нет';
   static const String todayEmptyBody =
@@ -95,6 +148,30 @@ class AppStrings {
   static const String customAmount = 'Другое количество';
   static const String everyDay = 'Каждый день';
   static const String noSchedule = 'Без расписания';
+  static const String byProgram = 'По программе';
+  static const String once = 'Один раз';
+
+  // --- Напоминание заранее ---
+  static const String remindBeforeLabel = 'Напомнить заранее';
+  static const String remindBeforeAuto = 'Авто';
+  static const String remindBeforeAutoHint =
+      'Задачи — за 10 мин, привычки — нет';
+  static const String remindBeforeOff = 'Не напоминать';
+  static const String remindBeforeFormat = 'За %s мин';
+  static const String remindBeforeHour = 'За 1 час';
+  static const String pickDate = 'Выберите дату';
+  static const String otherDate = 'Другая дата';
+
+  // --- AI: быстрое добавление ---
+  static const String quickAddEntry = 'Описать словами (AI)';
+  static const String quickAddTitle = 'Добавить с AI';
+  static const String quickAddSubtitle =
+      'Напишите привычку или задачу своими словами — дату, время и цель '
+      'AI найдёт сам. Перед сохранением всё можно поправить.';
+  static const String quickAddHint = 'Например: завтра в 15:00 к врачу';
+  static const String quickAddAction = 'Создать';
+  static const String byProgramHint =
+      'Расписание задаёт программа тренировок — его нельзя изменить вручную.';
 
   /// «Раз в N дней» — число подставляется на месте `%s`.
   static const String everyNDays = 'Раз в %s дней';
@@ -221,6 +298,8 @@ class AppStrings {
   static const String newHabit = 'Новая привычка';
   static const String editHabit = 'Изменить привычку';
   static const String chooseHabit = 'Выберите привычку';
+  static const String templatesTitle = 'Шаблоны';
+  static const String allCategories = 'Все';
   static const String customHabit = 'Своя привычка';
   static const String customHabitHint = 'Создать с нуля';
   static const String searchHabits = 'Поиск привычек';
@@ -228,6 +307,8 @@ class AppStrings {
   static const String continueAction = 'Продолжить';
   static const String errTitleRequired = 'Введите название';
   static const String habitCreated = 'Привычка создана';
+  static const String habitUpdated = 'Изменения сохранены';
+  static const String editAction = 'Изменить';
 
   static const String catGood = 'Хорошие';
   static const String catHealth = 'Здоровье';
@@ -256,6 +337,7 @@ class AppStrings {
   static const String repeatDaily = 'Каждый день';
   static const String repeatWeekly = 'Дни недели';
   static const String repeatInterval = 'С интервалом';
+  static const String repeatOnce = 'Один раз';
   static const String repeatIntervalHint = 'Раз в сколько дней';
   static const String errWeekdaysRequired = 'Выберите хотя бы один день';
 
@@ -270,18 +352,6 @@ class AppStrings {
   static const String descriptionHint = 'Зачем вам эта привычка?';
 
   static const String done = 'Готово';
-
-  /// Часто используемые единицы измерения цели.
-  static const List<String> goalUnits = [
-    'раз',
-    'минут',
-    'часов',
-    'литров',
-    'страниц',
-    'км',
-    'шагов',
-    'ккал',
-  ];
 
   // --- Изменить порядок ---
   static const String reorderTitle = 'Изменить порядок';

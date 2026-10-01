@@ -34,7 +34,7 @@ class DioClient {
       ),
     );
 
-    // Interceptor 401 "expired" da so'rovни qayta yuborishi uchun aynan shu
+    // Interceptor 401 "expired" da so'rovni qayta yuborishi uchun aynan shu
     // `dio` ga havola oladi — shuning uchun avval yasab, keyin qo'shamiz.
     dio.interceptors.add(
       AuthInterceptor(

@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 
+import '../constants/api_constants.dart';
 import '../constants/app_strings.dart';
 import '../error/exceptions.dart';
 
@@ -33,40 +34,66 @@ class ErrorMapper {
         final status = response?.statusCode ?? 500;
         return ServerException(
           statusCode: status,
-          message: _messageFor(status, response?.data),
+          message: _messageFor(status, response?.data, e.requestOptions.path),
           fieldErrors: _fieldErrors(response?.data),
         );
     }
   }
 
-  static String _messageFor(int status, dynamic data) {
+  static String _messageFor(int status, dynamic data, String path) {
     final detail = data is Map<String, dynamic> ? data['detail'] : null;
 
     // 422 da detail — ro'yxat; foydalanuvchiga umumiy matn yaxshiroq,
     // aniqlik esa maydonlar ostida ko'rsatiladi.
-    if (detail is String && detail.isNotEmpty) {
-      return _localize(status, detail);
-    }
-    return _localize(status, null);
+    return _localize(
+      status,
+      detail is String && detail.isNotEmpty ? detail : null,
+      path,
+    );
   }
 
   /// Backend matnlari ingliz tilida — foydalanuvchi ko'radigan joyda
-  /// ularni o'zbekchaga almashtiramiz. Noma'lum holatlarda umumiy matn.
-  static String _localize(int status, String? detail) {
+  /// ularni ilova tiliga almashtiramiz. Noma'lum holatlarda umumiy matn.
+  ///
+  /// Bir xil status turli endpointda turli ma'noga ega, shuning uchun
+  /// [path] ham hisobga olinadi: login'dagi 401 — "parol noto'g'ri",
+  /// boshqa joydagi 401 — "sessiya tugadi"; register'dagi 409 — "email
+  /// band", dasturdagi 409 — "faol dastur allaqachon bor".
+  static String _localize(int status, String? detail, String path) {
     switch (status) {
       case 401:
-        return AppStrings.errInvalidCredentials;
+        if (path.endsWith(ApiConstants.telegramAuth)) {
+          return AppStrings.errTelegramAuth;
+        }
+        return _isCredentialsCheck(path)
+            ? AppStrings.errInvalidCredentials
+            : AppStrings.errSessionExpired;
       case 403:
+        if (path.endsWith(ApiConstants.telegramAuth)) {
+          return AppStrings.errPrivateBot;
+        }
         return AppStrings.errAccountBlocked;
       case 409:
-        return AppStrings.errEmailTaken;
+        if (path.endsWith(ApiConstants.register)) {
+          return AppStrings.errEmailTaken;
+        }
+        if (path.startsWith(ApiConstants.programs)) {
+          return AppStrings.errProgramExists;
+        }
+        return AppStrings.errConflict;
       case 422:
+        if (path.endsWith(ApiConstants.habitsParse)) {
+          return AppStrings.errNotAHabit;
+        }
         return AppStrings.errValidation;
       default:
         if (status >= 500) return AppStrings.errServer;
         return detail ?? AppStrings.errUnknown;
     }
   }
+
+  static bool _isCredentialsCheck(String path) =>
+      path.endsWith(ApiConstants.login) || path.endsWith(ApiConstants.token);
 
   /// `loc: ["body", "password"]` dan `{"password": "..."}` yasaydi.
   static Map<String, String> _fieldErrors(dynamic data) {

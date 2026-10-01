@@ -5,6 +5,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/constants/app_strings.dart';
 import 'core/di/injection_container.dart';
 import 'core/router/app_router.dart';
+import 'core/telegram/telegram_platform.dart';
+import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/groups/presentation/bloc/groups_bloc.dart';
@@ -42,9 +44,31 @@ class _WarderDoAppState extends State<WarderDoApp> {
   late final HabitsBloc _habitsBloc = sl<HabitsBloc>();
   late final GroupsBloc _groupsBloc = sl<GroupsBloc>();
   late final AppRouter _appRouter = AppRouter(_authBloc);
+  final TelegramPlatform _telegram = sl<TelegramPlatform>();
+
+  @override
+  void initState() {
+    super.initState();
+    if (_telegram.isAvailable) {
+      // Telegram panellari ilova foni bilan bir xil rangda bo'lsin.
+      _telegram.prepare(background: AppColors.background);
+      // Telegram'ning "orqaga" tugmasi — router stack'i bo'yicha.
+      _telegram.onBackButtonPressed(() {
+        if (_appRouter.router.canPop()) _appRouter.router.pop();
+      });
+      _appRouter.router.routerDelegate.addListener(_syncBackButton);
+    }
+  }
+
+  void _syncBackButton() {
+    _telegram.setBackButtonVisible(_appRouter.router.canPop());
+  }
 
   @override
   void dispose() {
+    if (_telegram.isAvailable) {
+      _appRouter.router.routerDelegate.removeListener(_syncBackButton);
+    }
     _authBloc.close();
     _habitsBloc.close();
     _groupsBloc.close();

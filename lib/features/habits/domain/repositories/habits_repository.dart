@@ -28,6 +28,14 @@ abstract class HabitsRepository {
     Map<String, dynamic> changes,
   );
 
+  /// AI: bitta gapdan odat qoralamasi ("завтра в 15:00 к врачу").
+  /// Hech narsa saqlanmaydi.
+  Future<Either<Failure, Habit>> parseHabit(String text);
+
+  /// Tahrirlash formasidan saqlash: serverga faqat [original] dan farq
+  /// qilgan maydonlar ketadi. Hech narsa o'zgarmagan bo'lsa so'rov yuborilmaydi.
+  Future<Either<Failure, Habit>> editHabit(Habit original, Habit edited);
+
   /// **Hard delete** — odat va butun tarixi o'chadi. Qaytarib bo'lmaydi.
   Future<Either<Failure, Unit>> deleteHabit(String id);
 

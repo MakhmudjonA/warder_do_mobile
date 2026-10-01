@@ -4,6 +4,7 @@ import '../../../../core/constants/api_constants.dart';
 import '../../../../core/network/error_mapper.dart';
 import '../models/auth_token_model.dart';
 import '../models/user_model.dart';
+import '../../domain/entities/telegram_login.dart';
 
 /// Backend bilan gaplashadigan yagona joy.
 ///
@@ -22,12 +23,31 @@ abstract class AuthRemoteDataSource {
     required String password,
   });
 
+  /// Telegram Mini App'dan kirish: `initData` ni server imzo bo'yicha
+  /// tekshiradi, birinchi marta bo'lsa hisob yaratadi.
+  Future<AuthTokenModel> loginWithTelegram({
+    required String initData,
+    String? timezone,
+  });
+
+  /// Telefon ilovasi: "Войти через Telegram" urinishini boshlash.
+  Future<TelegramLoginTicket> requestTelegramLogin({String? timezone});
+
+  /// Tasdiqlandimi? `confirmed` bo'lsa token ham keladi (bir marta).
+  Future<(TelegramLoginStatus, AuthTokenModel?)> pollTelegramLogin(String code);
+
   Future<UserModel> getMe();
 
-  Future<UserModel> updateMe({String? fullName, String? timezone});
+  /// [taskRemindBefore]: `null` — o'zgarmaydi, `-1` — server standartiga
+  /// qaytarish (`null` yuboriladi), aks holda daqiqalar.
+  Future<UserModel> updateMe({
+    String? fullName,
+    String? timezone,
+    int? taskRemindBefore,
+  });
 
-  /// Shu qurilma sessiyasini serverда bekor qiladi. Auth header shart emas —
-  /// access token allaqачон eskirgan bo'lsa ham chiqish ishlashi kerak.
+  /// Shu qurilma sessiyasini serverda bekor qiladi. Auth header shart emas —
+  /// access token allaqachon eskirgan bo'lsa ham chiqish ishlashi kerak.
   Future<void> logout(String refreshToken);
 }
 
@@ -77,6 +97,69 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
+  Future<AuthTokenModel> loginWithTelegram({
+    required String initData,
+    String? timezone,
+  }) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        ApiConstants.telegramAuth,
+        data: {'init_data': initData, 'timezone': ?timezone},
+      );
+      return AuthTokenModel.fromJson(response.data!);
+    } on DioException catch (e) {
+      throw ErrorMapper.map(e);
+    }
+  }
+
+  @override
+  Future<TelegramLoginTicket> requestTelegramLogin({String? timezone}) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        ApiConstants.telegramLoginRequest,
+        data: {'timezone': ?timezone},
+      );
+      final data = response.data!;
+      return TelegramLoginTicket(
+        code: data['code'] as String,
+        displayCode: data['display_code'] as String,
+        botUrl: data['bot_url'] as String,
+        expiresAt: DateTime.now().add(
+          Duration(seconds: (data['expires_in'] as num?)?.toInt() ?? 600),
+        ),
+      );
+    } on DioException catch (e) {
+      throw ErrorMapper.map(e);
+    }
+  }
+
+  @override
+  Future<(TelegramLoginStatus, AuthTokenModel?)> pollTelegramLogin(
+    String code,
+  ) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        ApiConstants.telegramLoginPoll,
+        data: {'code': code},
+      );
+      final data = response.data!;
+      final status = switch (data['status']) {
+        'confirmed' => TelegramLoginStatus.confirmed,
+        'cancelled' => TelegramLoginStatus.cancelled,
+        'expired' => TelegramLoginStatus.expired,
+        _ => TelegramLoginStatus.pending,
+      };
+      final token = data['token'];
+      return (
+        status,
+        token is Map<String, dynamic> ? AuthTokenModel.fromJson(token) : null,
+      );
+    } on DioException catch (e) {
+      throw ErrorMapper.map(e);
+    }
+  }
+
+  @override
   Future<UserModel> getMe() async {
     try {
       final response = await _dio.get<Map<String, dynamic>>(ApiConstants.me);
@@ -87,11 +170,22 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
-  Future<UserModel> updateMe({String? fullName, String? timezone}) async {
+  Future<UserModel> updateMe({
+    String? fullName,
+    String? timezone,
+    int? taskRemindBefore,
+  }) async {
     try {
       final response = await _dio.patch<Map<String, dynamic>>(
         ApiConstants.me,
-        data: {'full_name': ?fullName, 'timezone': ?timezone},
+        data: {
+          'full_name': ?fullName,
+          'timezone': ?timezone,
+          if (taskRemindBefore != null)
+            'task_remind_before_minutes': taskRemindBefore < 0
+                ? null
+                : taskRemindBefore,
+        },
       );
       return UserModel.fromJson(response.data!);
     } on DioException catch (e) {

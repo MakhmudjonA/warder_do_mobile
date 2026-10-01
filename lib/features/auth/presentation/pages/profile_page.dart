@@ -11,6 +11,13 @@ import '../../../../core/widgets/wd_icon.dart';
 import '../../../../core/widgets/wd_settings_tile.dart';
 import '../bloc/auth_bloc.dart';
 import '../widgets/auth_notice_listener.dart';
+import 'package:go_router/go_router.dart';
+import '../../../../core/di/injection_container.dart';
+import '../../../../core/router/app_routes.dart';
+import '../../../../core/telegram/telegram_platform.dart';
+import '../../../groups/presentation/bloc/groups_bloc.dart';
+import '../../../habits/presentation/bloc/habits_bloc.dart';
+import '../../../habits/presentation/widgets/habit_form_sheets.dart';
 
 /// Profil — screenshotlardagi sozlamalar bloklari uslubida.
 ///
@@ -43,7 +50,7 @@ class ProfilePage extends StatelessWidget {
                   _ProfileHeader(
                     initials: user.initials,
                     name: user.displayName,
-                    email: user.email,
+                    subtitle: user.email ?? AppStrings.viaTelegram,
                   ),
                   const SizedBox(height: 32),
 
@@ -59,14 +66,22 @@ class ProfilePage extends StatelessWidget {
                             ? null
                             : () => _editName(context, user.fullName),
                       ),
-                      WdSettingsTile(
-                        icon: AppIcons.email,
-                        iconColor: AppColors.habitPalette[2],
-                        title: AppStrings.email,
-                        value: user.email,
-                        // Email `PATCH /auth/me` orqali o'zgarmaydi —
-                        // shuning uchun bosilmaydi.
-                      ),
+                      // Email `PATCH /auth/me` orqali o'zgarmaydi — shuning
+                      // uchun bosilmaydi. Telegram hisobida email yo'q.
+                      if (user.email case final email?)
+                        WdSettingsTile(
+                          icon: AppIcons.email,
+                          iconColor: AppColors.habitPalette[2],
+                          title: AppStrings.email,
+                          value: email,
+                        )
+                      else
+                        WdSettingsTile(
+                          icon: AppIcons.user,
+                          iconColor: AppColors.habitPalette[2],
+                          title: AppStrings.signInMethod,
+                          value: AppStrings.viaTelegram,
+                        ),
                       WdSettingsTile(
                         icon: AppIcons.globe,
                         iconColor: AppColors.habitPalette[1],
@@ -77,6 +92,66 @@ class ProfilePage extends StatelessWidget {
                             : () => _editTimezone(context, user.timezone),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  WdSettingsGroup(
+                    title: AppStrings.organize,
+                    children: [
+                      WdSettingsTile(
+                        icon: AppIcons.folder,
+                        iconColor: AppColors.habitPalette[0],
+                        title: AppStrings.groupsMenu,
+                        onTap: () => _openAndRefresh(context, AppRoutes.groups),
+                      ),
+                      WdSettingsTile(
+                        icon: AppIcons.list,
+                        iconColor: AppColors.habitPalette[3],
+                        title: AppStrings.reorderMenu,
+                        onTap: () =>
+                            _openAndRefresh(context, AppRoutes.organizer),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  WdSettingsGroup(
+                    title: AppStrings.notifications,
+                    children: [
+                      WdSettingsTile(
+                        icon: AppIcons.bell,
+                        iconColor: AppColors.habitPalette[6],
+                        title: AppStrings.taskLeadTitle,
+                        value: user.taskRemindBeforeMinutes == null
+                            ? AppStrings.taskLeadAuto
+                            : RemindBeforeSheet.label(
+                                user.taskRemindBeforeMinutes,
+                              ),
+                        onTap: state.isSubmitting
+                            ? null
+                            : () => _editTaskLead(
+                                context,
+                                user.taskRemindBeforeMinutes,
+                              ),
+                      ),
+                      // Bot bilan chat faqat Telegram ichida ochiladi.
+                      if (sl<TelegramPlatform>().isAvailable)
+                        WdSettingsTile(
+                          icon: AppIcons.telegram,
+                          iconColor: const Color(0xFF2AABEE),
+                          title: AppStrings.botChat,
+                          onTap: () => sl<TelegramPlatform>().openTelegramLink(
+                            AppStrings.botUrl,
+                          ),
+                        ),
+                    ],
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    child: Text(
+                      AppStrings.botRemindersHint,
+                      style: AppTextStyles.caption,
+                    ),
                   ),
                   const SizedBox(height: 24),
 
@@ -108,6 +183,22 @@ class ProfilePage extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// Guruhlar/tartib o'zgargan bo'lishi mumkin — bosh ekranni yangilaymiz.
+  Future<void> _openAndRefresh(BuildContext context, String route) async {
+    await context.push(route);
+    if (!context.mounted) return;
+    context.read<HabitsBloc>().add(const HabitsRequested(silent: true));
+    context.read<GroupsBloc>().add(const GroupsRequested());
+  }
+
+  Future<void> _editTaskLead(BuildContext context, int? current) async {
+    final bloc = context.read<AuthBloc>();
+    final picked = await RemindBeforeSheet.show(context, current);
+    if (picked == null) return;
+    // RemindBeforeSheet.auto (-1) — server standartiga qaytarish.
+    bloc.add(AuthProfileUpdated(taskRemindBefore: picked));
   }
 
   static String _formatDate(DateTime date) =>
@@ -185,12 +276,12 @@ class _ProfileHeader extends StatelessWidget {
   const _ProfileHeader({
     required this.initials,
     required this.name,
-    required this.email,
+    required this.subtitle,
   });
 
   final String initials;
   final String name;
-  final String email;
+  final String subtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -212,7 +303,7 @@ class _ProfileHeader extends StatelessWidget {
         const SizedBox(height: 16),
         Text(name, style: AppTextStyles.title),
         const SizedBox(height: 4),
-        Text(email, style: AppTextStyles.bodyMuted),
+        Text(subtitle, style: AppTextStyles.bodyMuted),
       ],
     );
   }
@@ -311,10 +402,7 @@ class _TimezoneSheet extends StatelessWidget {
                     ),
                   ),
                   trailing: selected
-                      ? const WdIcon(
-                          AppIcons.check,
-                          color: AppColors.primary,
-                        )
+                      ? const WdIcon(AppIcons.check, color: AppColors.primary)
                       : null,
                   onTap: () => Navigator.of(context).pop(zone),
                 );

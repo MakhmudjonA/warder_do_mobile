@@ -89,7 +89,9 @@ class StatsState extends Equatable {
     return StatsState(
       status: status ?? this.status,
       habits: habits ?? this.habits,
-      selectedHabitId: clearHabit ? null : (selectedHabitId ?? this.selectedHabitId),
+      selectedHabitId: clearHabit
+          ? null
+          : (selectedHabitId ?? this.selectedHabitId),
       month: month ?? this.month,
       calendar: calendar ?? this.calendar,
       calendarLoading: calendarLoading ?? this.calendarLoading,

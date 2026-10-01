@@ -35,8 +35,12 @@ class ProgramsRemoteDataSourceImpl implements ProgramsRemoteDataSource {
       final response = await _dio.post<Map<String, dynamic>>(
         ApiConstants.programsGenerate,
         // `duration_days` ni faqat foydalanuvchi aniq bergan bo'lsa yuboramiz —
-        // aks holда uzunlikни AI matndан o'zi aniqlaydi.
+        // aks holda uzunlikni AI matndan o'zi aniqlaydi.
         data: {'prompt': prompt, 'duration_days': ?durationDays},
+        // AI javobi oddiy so'rovdan ancha uzoq: backend Gemini'ni 60 s gacha,
+        // ikki urinishgacha kutadi (docs/PROGRAMS.md). Umumiy 20 s bilan
+        // telefon javobni kutmay uzib qo'yardi.
+        options: Options(receiveTimeout: ApiConstants.aiReceiveTimeout),
       );
       return ProgramPreviewModel.fromJson(response.data!);
     } on DioException catch (e) {

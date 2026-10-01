@@ -3,12 +3,15 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_icons.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/habit_visuals.dart';
+import '../../../../core/utils/date_labels.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/wd_icon.dart';
 import '../../../groups/domain/entities/group.dart';
 import '../../domain/entities/habit.dart';
 import '../../domain/entities/repeat_rule.dart';
+import '../../../../core/widgets/habit_icon_tile.dart';
+import '../../../../core/constants/goal_units.dart';
 
 /// Одна строка списка «Изменить порядок»: либо заголовок группы, либо привычка.
 ///
@@ -60,10 +63,7 @@ class OrganizerHeaderTile extends StatelessWidget {
             _RemoveButton(onTap: onRemove),
           const SizedBox(width: 12),
           if (!isUngrouped) ...[
-            Text(
-              HabitEmoji.resolve(group!.icon),
-              style: const TextStyle(fontSize: 20),
-            ),
+            HabitIconTile(iconKey: group!.icon, size: 30, onColor: true),
             const SizedBox(width: 12),
           ],
           Expanded(
@@ -112,10 +112,7 @@ class OrganizerHabitTile extends StatelessWidget {
         children: [
           _RemoveButton(onTap: onRemove),
           const SizedBox(width: 12),
-          Text(
-            HabitEmoji.resolve(habit.icon),
-            style: const TextStyle(fontSize: 20),
-          ),
+          HabitIconTile(iconKey: habit.icon, color: habit.color, size: 30),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -159,6 +156,9 @@ class OrganizerHabitTile extends StatelessWidget {
         '%s',
         '$everyNDays',
       ),
+      ProgramRepeat() => AppStrings.byProgram,
+      OnceRepeat(:final date) =>
+        '${AppStrings.once}, ${dayLabel(date).toLowerCase()}',
     };
 
     final goal = habit.goalValue;
@@ -167,7 +167,7 @@ class OrganizerHabitTile extends StatelessWidget {
     final value = goal == goal.roundToDouble()
         ? goal.toInt().toString()
         : goal.toString();
-    return '$schedule, $value ${habit.goalUnit ?? ''}'.trim();
+    return '$schedule, $value ${GoalUnits.label(habit.goalUnit)}'.trim();
   }
 }
 

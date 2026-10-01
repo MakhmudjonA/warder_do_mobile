@@ -141,6 +141,39 @@ class CreateHabit implements UseCase<Habit, Habit> {
       _repository.createHabit(params);
 }
 
+/// Mavjud odatni tahrirlash formasidan saqlash.
+class UpdateHabit implements UseCase<Habit, UpdateHabitParams> {
+  const UpdateHabit(this._repository);
+
+  final HabitsRepository _repository;
+
+  @override
+  Future<Either<Failure, Habit>> call(UpdateHabitParams params) =>
+      _repository.editHabit(params.original, params.edited);
+}
+
+class UpdateHabitParams extends Equatable {
+  const UpdateHabitParams({required this.original, required this.edited});
+
+  /// Forma ochilgandagi holat — farqni hisoblash uchun.
+  final Habit original;
+  final Habit edited;
+
+  @override
+  List<Object?> get props => [original, edited];
+}
+
+/// AI tezkor qo'shish: matn → saqlanmagan odat qoralamasi.
+class ParseHabitText implements UseCase<Habit, String> {
+  const ParseHabitText(this._repository);
+
+  final HabitsRepository _repository;
+
+  @override
+  Future<Either<Failure, Habit>> call(String params) =>
+      _repository.parseHabit(params);
+}
+
 /// Tayyor odat shablonlari. Auth talab qilmaydi.
 class GetHabitTemplates
     implements UseCase<List<HabitTemplate>, TemplateParams> {
@@ -182,8 +215,8 @@ class MoveHabitToGroup implements UseCase<Habit, MoveHabitParams> {
 
   @override
   Future<Either<Failure, Habit>> call(MoveHabitParams params) {
-    // `null` yuborish kerak, shuning uchun `toUpdateJson` emas, to'g'ridan-
-    // to'g'ri map: "guruhsiz" holatini tashlab ketib bo'lmaydi.
+    // Faqat bitta maydon, `null` ham ma'noli ("guruhsiz") — shuning uchun
+    // `editHabit` emas, to'g'ridan-to'g'ri map.
     return _repository.updateHabit(params.habitId, {
       'group_id': params.groupId,
     });

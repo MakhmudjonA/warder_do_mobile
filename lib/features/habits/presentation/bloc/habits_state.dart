@@ -15,6 +15,7 @@ class HabitsState extends Equatable {
     this.pendingIds = const {},
     this.isSubmitting = false,
     this.createdHabit,
+    this.updatedHabit,
   }) : selectedDate = selectedDate ?? ApiDate.dayOnly(DateTime.now());
 
   final HabitsStatus status;
@@ -45,6 +46,9 @@ class HabitsState extends Equatable {
   /// Oxirgi muvaffaqiyatli yaratilgan odat — forma ekranini yopish uchun.
   final Habit? createdHabit;
 
+  /// Oxirgi muvaffaqiyatli tahrirlangan odat — tahrirlash formasini yopish uchun.
+  final Habit? updatedHabit;
+
   /// Formadagi maydonlar ostida ko'rsatiladigan server xatolari.
   Map<String, String> get fieldErrors => failure?.fieldErrors ?? const {};
 
@@ -69,6 +73,7 @@ class HabitsState extends Equatable {
     Set<String>? pendingIds,
     bool? isSubmitting,
     Habit? createdHabit,
+    Habit? updatedHabit,
     bool clearFailure = false,
     bool clearNotice = false,
     bool clearUnlocked = false,
@@ -87,6 +92,7 @@ class HabitsState extends Equatable {
       pendingIds: pendingIds ?? this.pendingIds,
       isSubmitting: isSubmitting ?? this.isSubmitting,
       createdHabit: clearNotice ? null : (createdHabit ?? this.createdHabit),
+      updatedHabit: clearNotice ? null : (updatedHabit ?? this.updatedHabit),
     );
   }
 

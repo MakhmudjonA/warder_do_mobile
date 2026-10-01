@@ -14,7 +14,7 @@ abstract class AuthLocalDataSource {
   Future<void> cacheToken(AuthTokenModel token);
   Future<AuthTokenModel?> getToken();
 
-  /// Faqat refresh token satri — interceptorда yangilash uchun.
+  /// Faqat refresh token satri — interceptorda yangilash uchun.
   Future<String?> getRefreshToken();
 
   Future<void> cacheUser(UserModel user);
@@ -59,7 +59,7 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
         tokenType: await _storage.read(StorageKeys.tokenType) ?? 'bearer',
         expiresAtIso: expiresAt,
         refreshToken: refreshToken ?? '',
-        // Eski o'rnatishlarда refresh muddati bo'lmasligi mumkin — o'tmish
+        // Eski o'rnatishlarda refresh muddati bo'lmasligi mumkin — o'tmish
         // sanani beramiz, shunda "eskirgan" deb hisoblanadi.
         refreshExpiresAtIso:
             refreshExpiresAt ?? DateTime.utc(1970).toIso8601String(),
@@ -72,8 +72,7 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
   }
 
   @override
-  Future<String?> getRefreshToken() =>
-      _storage.read(StorageKeys.refreshToken);
+  Future<String?> getRefreshToken() => _storage.read(StorageKeys.refreshToken);
 
   @override
   Future<void> cacheUser(UserModel user) =>

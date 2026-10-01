@@ -16,7 +16,7 @@ class Group extends Equatable {
   final String id;
   final String name;
 
-  /// Emoji kaliti (`"morning"`), `HabitEmoji.resolve` bilan o'qiladi.
+  /// Ikonka kaliti (`"morning"`), `HabitIcons.resolve` bilan chiziladi.
   final String icon;
 
   /// Hex rang (`"#5B6EF5"`).
